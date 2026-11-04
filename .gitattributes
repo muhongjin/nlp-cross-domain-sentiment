@@ -1,0 +1,14 @@
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.pdf binary
+*.parquet binary
+*.joblib binary
+*.pt binary
+*.bin binary
+*.safetensors binary
+
+*.ipynb text eol=lf
