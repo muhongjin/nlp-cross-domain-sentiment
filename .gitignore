@@ -1,0 +1,43 @@
+# ---- data (large, regenerable) ----
+data/raw/*
+!data/raw/.gitkeep
+data/processed/*
+!data/processed/.gitkeep
+
+# ---- models / checkpoints ----
+models/*
+!models/.gitkeep
+*.joblib
+*.pt
+*.pth
+*.bin
+*.safetensors
+*.ckpt
+
+# ---- python ----
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+.ipynb_checkpoints/
+.pytest_cache/
+.ruff_cache/
+
+# ---- results: keep small tables, drop logs ----
+results/logs/
+*.log
+
+# ---- secrets ----
+.env
+.env.*
+*.pem
+*.key
+
+# ---- os / editor ----
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
