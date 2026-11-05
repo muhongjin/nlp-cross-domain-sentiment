@@ -568,6 +568,12 @@ def main():
     add("Seed 42 is fixed for sampling, splitting and training. Hyperparameters live in "
         "`configs/final.yaml`. Every training run writes a JSON record with its settings and metrics.")
     add("")
+    add(
+        "The data step is deterministic. Running `src/prepare_data.py` a second time regenerated "
+        "all nine parquet files with identical md5 checksums, so a teammate who clones the "
+        "repository and reruns the script gets the same splits."
+    )
+    add("")
 
     add("## References")
     add("")

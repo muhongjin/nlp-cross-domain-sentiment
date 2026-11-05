@@ -252,6 +252,8 @@ The practical recommendation for a business is to test a reused model on a sampl
 
 Seed 42 is fixed for sampling, splitting and training. Hyperparameters live in `configs/final.yaml`. Every training run writes a JSON record with its settings and metrics.
 
+The data step is deterministic. Running `src/prepare_data.py` a second time regenerated all nine parquet files with identical md5 checksums, so a teammate who clones the repository and reruns the script gets the same splits.
+
 ## References
 
 - Maas, Daly, Pham, Huang, Ng and Potts (2011). Learning word vectors for sentiment analysis. ACL-HLT.

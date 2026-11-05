@@ -48,6 +48,11 @@ lowest Jensen-Shannon divergence (0.146) yet still cost each other 0.022 to 0.03
 Review length tracks the drop more closely: IMDb averages 229 words, Yelp 133 and Amazon 74,
 and the short-domain models suffer most when IMDb is the target.
 
+A data-scaling run trains DistilBERT on 5,000, 10,000 and 20,000 IMDb rows. Within-domain
+macro-F1 rises from 0.893 to 0.902, while the cross-domain scores stay flat or fall, so more
+in-domain data does not close the gap. The data pipeline is deterministic: rerunning
+`src/prepare_data.py` regenerates all nine parquet files with identical md5 checksums.
+
 ## Datasets
 
 | Dataset | Domain | Train | Test | Positive class | Licence |
