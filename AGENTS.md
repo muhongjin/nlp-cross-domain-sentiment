@@ -95,7 +95,7 @@ scripts/      helper shell scripts
 
 ## 7. Progress
 
-Last updated: 2026-11-05 13:40 SGT.
+Last updated: 2026-11-05 14:00 SGT.
 
 | Stage | Description | Script | Output | Status |
 |---|---|---|---|---|
@@ -145,6 +145,13 @@ Data checks: near-duplicate screening over 90,000 pooled reviews found 11 pairs,
 IMDb, none across datasets and none between train and test. Jensen-Shannon divergence is
 lowest between IMDb and Amazon (0.146) and highest between IMDb and Yelp (0.225), which does
 not line up with the transfer losses. Target review length lines up better.
+
+Length and data: cross-domain accuracy is 0.909 on reviews of 100 words or fewer and 0.809 on
+reviews over 200 words, and even within IMDb accuracy falls from 0.927 to 0.826 across those
+buckets. Quadrupling the IMDb training set (5k to 20k rows) lifts within-domain macro-F1 by
+0.009 but leaves the cross-domain scores flat or lower, so data scarcity is not the cause.
+The data pipeline is deterministic: rerunning `src/prepare_data.py` regenerates all nine
+parquet files with identical md5 checksums.
 
 Full write-up: `REPORT.md`. Figures: `figures/`.
 

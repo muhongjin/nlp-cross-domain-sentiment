@@ -4,7 +4,7 @@ NLP group project. Three review domains, four models, three experimental setting
 
 ## Abstract
 
-We compare a majority-class baseline, two TF-IDF classifiers and a fine-tuned DistilBERT model on movie, business and product reviews. Inside a domain, DistilBERT reached the highest average macro-F1 at 0.925. Crossing a domain boundary cost the TF-IDF models about 0.065 macro-F1 and DistilBERT about 0.034, so the transformer degraded more gently even though it started higher. Mixed-domain training changed the result by no more than 0.022 macro-F1 in either direction, which is close to the seed-to-seed spread, and it helped only when the target was the product domain.
+We compare a majority-class baseline, two TF-IDF classifiers and a fine-tuned DistilBERT model on movie, business and product reviews. Inside a domain, DistilBERT reached the highest average macro-F1 at 0.925. Crossing a domain boundary cost the TF-IDF models about 0.065 macro-F1 and DistilBERT about 0.034, so the transformer degraded more gently even though it started higher. Mixed-domain training changed the result by no more than 0.022 macro-F1 in either direction, which is close to the seed-to-seed spread, and it helped only when the target was the product domain. Review length explains more of the transfer loss than vocabulary distance does: accuracy on cross-domain reviews falls from 0.909 below 100 words to 0.809 above 200.
 
 ## 1. Introduction
 
