@@ -605,7 +605,8 @@ def main():
     add(
         "The data step is deterministic. Running `src/prepare_data.py` a second time regenerated "
         "all nine parquet files with identical md5 checksums, so a teammate who clones the "
-        "repository and reruns the script gets the same splits."
+        "repository and reruns the script gets the same splits. Re-running `src/baselines.py` "
+        "reproduced the within-domain table to six decimals."
     )
     add("")
 
