@@ -1,10 +1,10 @@
-# Cross-Domain Sentiment Analysis
+# Cross-domain sentiment analysis
 
 Evaluating how well sentiment classifiers generalise across review domains, and whether
 mixed-domain training closes the gap.
 
-**Course:** Natural Language Processing — group project (25%)
-**Deadline:** 15 November 2026, 23:59
+**Course:** Natural Language Processing, group project (25%)
+**Deadline:** 15 November 2026
 
 ## Research question
 
@@ -12,108 +12,132 @@ mixed-domain training closes the gap.
 > classification performance of traditional machine learning and transformer models,
 > and can mixed-domain training reduce this performance gap?
 
-Supporting questions:
+## What the experiments found
 
-- How do TF-IDF + Logistic Regression and TF-IDF + SVM compare with fine-tuned DistilBERT
-  within each domain?
-- How much does each model's performance change when tested on a different domain?
-- Does training on two domains improve performance on an unseen third domain, compared
-  with training on either source domain alone?
-- What types of errors explain the observed differences?
+Four models (majority class, TF-IDF + Logistic Regression, TF-IDF + Linear SVM, fine-tuned
+DistilBERT) were trained on three review domains of 20,000 rows each and evaluated in three
+settings.
+
+| Setting | What it does |
+|---|---|
+| Within-domain | train and test on the same domain |
+| Cross-domain | train on one domain, test on the other two, no retraining |
+| Mixed-domain | train on two domains, test on the third, training size held constant |
+
+Headline numbers from `REPORT.md`:
+
+| Model | Within-domain macro-F1 | Cross-domain macro-F1 | Average drop |
+|---|---:|---:|---:|
+| TF-IDF + Logistic Regression | 0.901 | 0.838 | 0.063 |
+| TF-IDF + Linear SVM | 0.904 | 0.840 | 0.065 |
+| DistilBERT | 0.925 | 0.892 | 0.034 |
+
+DistilBERT starts highest and degrades least. Transfer is asymmetric: a Yelp-trained model
+loses 0.097 macro-F1 on IMDb, while an IMDb-trained model loses 0.000 on Yelp. Mixed-domain
+training changed scores by less than 0.02 macro-F1 either way, and every gain landed on the
+Amazon target.
 
 ## Datasets
 
 | Dataset | Domain | Train | Test | Positive class | Licence |
 |---|---|---:|---:|---|---|
-| [IMDb](https://huggingface.co/datasets/stanfordnlp/imdb) | Movie reviews | 25,000 | 25,000 | rating ≥ 7/10 | `other` — non-commercial research use |
-| [Yelp Polarity](https://huggingface.co/datasets/fancyzhx/yelp_polarity) | Business & service reviews | 560,000 | 38,000 | 3–4 stars (5 stars dropped) | not declared; Yelp Dataset Challenge terms |
-| [Amazon Polarity](https://huggingface.co/datasets/fancyzhx/amazon_polarity) | Product reviews | 3,600,000 | 400,000 | 4–5 stars | `apache-2.0` (HF packaging) |
+| [IMDb](https://huggingface.co/datasets/stanfordnlp/imdb) | Movie reviews | 25,000 | 25,000 | rating 7 and above | `other`, non-commercial research use |
+| [Yelp Polarity](https://huggingface.co/datasets/fancyzhx/yelp_polarity) | Business and service reviews | 560,000 | 38,000 | 3 to 4 stars | not declared; Yelp Dataset Challenge terms |
+| [Amazon Polarity](https://huggingface.co/datasets/fancyzhx/amazon_polarity) | Product reviews | 3,600,000 | 400,000 | 4 to 5 stars | `apache-2.0` (HF packaging) |
 
-All three are subsampled to a common size — **20,000 train / 2,000 validation / 10,000 test
-per domain** — so that differences in performance are not explained by training-set size.
+Each domain is subsampled to 20,000 train, 2,000 validation and 10,000 test rows, balanced
+50/50, so that a larger training pool cannot explain a performance difference.
 
 ### Known limitations
 
-- **Label construction differs across datasets.** Yelp's positive class is weaker (3–4 stars)
-  than IMDb's (≥ 7/10) and Amazon's (4–5 stars). This is treated as a confound, not ignored.
-- **Domains are not orthogonal.** Amazon Polarity spans multiple categories including
-  Movies & TV and Books, which overlaps semantically with IMDb. Near-duplicate screening
-  is applied across datasets and the remaining overlap is reported.
-- **Review length differs.** IMDb reviews are much longer than Yelp/Amazon reviews; input
-  length is fixed at 256 tokens and length distributions are reported.
+- The datasets build the positive class differently. Yelp's positive class is weaker
+  (3 to 4 stars) than IMDb's (7 of 10) and Amazon's (4 of 5 stars).
+- The domains are not equally distant. Yelp and Amazon both collect consumer verdicts,
+  while IMDb collects long-form film criticism.
+- Amazon Polarity spans many categories including films and books, so some vocabulary
+  overlaps with IMDb. Exact duplicates are removed; near-duplicates are not.
+- IMDb text keeps HTML line-break tags, and Amazon Polarity contains a few non-English
+  reviews. Both were left in place.
 
 ### Citation
 
-If you use this code, cite the original dataset papers:
-
-- Maas et al. (2011). *Learning Word Vectors for Sentiment Analysis.* ACL-HLT 2011.
-- Zhang, Zhao & LeCun (2015). *Character-level Convolutional Networks for Text Classification.* NIPS 2015.
-- McAuley & Leskovec (2013). *Hidden Factors and Hidden Topics.* RecSys 2013.
+- Maas et al. (2011). Learning Word Vectors for Sentiment Analysis. ACL-HLT.
+- Zhang, Zhao and LeCun (2015). Character-level Convolutional Networks for Text Classification. NIPS.
+- Sanh et al. (2019). DistilBERT, a distilled version of BERT. arXiv:1910.01108.
+- McAuley and Leskovec (2013). Hidden Factors and Hidden Topics. RecSys.
 
 The HuggingFace repositories `fancyzhx/yelp_polarity` and `fancyzhx/amazon_polarity` are
 unofficial mirrors of the Zhang et al. benchmark data.
 
-## Repository structure
+## Repository layout
 
 ```
-data/
-  raw/            # downloaded source data, not tracked
-  processed/      # aligned parquet splits, not tracked (regenerate with src/prepare_data.py)
 src/
-  prepare_data.py       # Stage 3  — load, align, subsample, dedupe, export splits
-  baselines.py          # Stage 4  — majority class, TF-IDF + LR, TF-IDF + SVM
-  train_transformer.py  # Stage 5  — fine-tune DistilBERT
-  tune.py               # Stage 6  — validation-only hyperparameter search
-  run_within.py         # Stage 7  — within-domain experiments
-  run_cross.py          # Stage 8  — cross-domain experiments
-  run_mixed.py          # Stage 9  — mixed-domain experiments
-  evaluate.py           # Stage 10 — metrics and tables
-  visualize.py          # Stage 10 — figures
-  error_analysis.ipynb  # Stage 11 — error taxonomy
-configs/          # hyperparameter configs
-results/          # csv / json experiment outputs
-figures/          # figures used in the report and video
-models/           # checkpoints, not tracked
+  prepare_data.py       Stage 3  load, align, deduplicate, subsample
+  baselines.py          Stage 4  majority class, TF-IDF + LR, TF-IDF + SVM
+  train_transformer.py  Stages 5 and 9  fine-tune DistilBERT
+  tune.py               Stage 6  validation-only hyperparameter search
+  run_within.py         Stage 7  collect within-domain results
+  run_cross.py          Stage 8  cross-domain evaluation
+  run_mixed.py          Stage 9  mixed-domain training and comparison
+  evaluate.py           Stage 10 result tables
+  visualize.py          Stage 10 figures
+  error_analysis.py     Stage 11 error taxonomy
+  build_report.py       assemble REPORT.md from the result files
+app/
+  streamlit_app.py      Stage 12 interactive demo
+scripts/
+  setup_env.sh          recreate the conda environment
+  run_all.sh            reproduce every stage in order
+configs/                final hyperparameters
+results/                CSV and JSON outputs
+figures/                figures used in the report
+REPORT.md               written report
+AGENTS.md               project rules and progress log
 ```
 
 ## Setup
 
+On the GPU server, with conda available:
+
 ```bash
-python -m venv .venv
-.venv\Scripts\activate          # Windows
-pip install -r requirements.txt
+bash scripts/setup_env.sh
 ```
 
-## Experiment matrix
+Pinned versions: torch 2.5.1+cu121, transformers 4.46.3, datasets 3.2.0, Python 3.10.
 
-| Setting | Train | Evaluate | Models |
-|---|---|---|---|
-| Within-domain | one domain | same domain | 4 |
-| Cross-domain | one domain | the other two | 4 |
-| Mixed-domain | two domains | the third | 4 |
+## Reproduce
 
-Cross-domain evaluation reuses the within-domain checkpoints — no retraining per direction.
-Total transformer fine-tunes: 3 (within) + 3 (mixed) = 6.
+```bash
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate nlp
+export CUDA_VISIBLE_DEVICES=1
+bash scripts/run_all.sh
+```
 
-## Status
+The full run takes about 45 minutes on a single RTX 3090: six DistilBERT fine-tunes plus
+two learning-rate tuning runs, with everything else taking seconds.
 
-| Stage | Description | Owner | Status |
-|---|---|---|---|
-| 1 | Define the problem | — | done (report draft) |
-| 2 | Select three datasets | — | done |
-| 3 | Explore and prepare data | — | not started |
-| 4 | Build baseline models | — | not started |
-| 5 | Build the transformer model | — | not started |
-| 6 | Tune the models | — | not started |
-| 7 | Run within-domain experiments | — | not started |
-| 8 | Run cross-domain experiments | — | not started |
-| 9 | Test an improvement (mixed-domain) | — | not started |
-| 10 | Evaluate and visualise | — | not started |
-| 11 | Analyse errors | — | not started |
-| 12 | Build a demonstration (Streamlit) | — | not started |
-| 13 | Prepare presentation and video | — | not started |
-| 14 | Package the submission | — | not started |
+## Demo
+
+```bash
+streamlit run app/streamlit_app.py
+```
+
+Forward the port over SSH to open it locally.
+
+## Figures
+
+| Figure | What it shows |
+|---|---|
+| `figures/fig_within_domain.png` | within-domain macro-F1 by model and domain |
+| `figures/fig_heatmap_macro_f1.png` | source by target macro-F1 for all three models |
+| `figures/fig_heatmap_drop.png` | DistilBERT performance drop when transferring |
+| `figures/fig_within_vs_cross.png` | average within-domain against cross-domain score |
+| `figures/fig_mixed_vs_single.png` | mixed-domain against the best single source |
+| `figures/fig_confusion_matrices.png` | DistilBERT cross-domain confusion matrices |
+| `figures/fig_length_distribution.png` | review length by domain |
 
 ## Group contributions
 
-See `REFLECTION.md` (added before submission) for the signed contribution breakdown.
+See `REFLECTION.md`, added before submission, for the signed contribution breakdown.

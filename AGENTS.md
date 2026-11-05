@@ -95,24 +95,45 @@ scripts/      helper shell scripts
 
 ## 7. Progress
 
-Last updated: 2026-11-05 12:12 SGT.
+Last updated: 2026-11-05 13:05 SGT.
 
 | Stage | Description | Script | Output | Status |
 |---|---|---|---|---|
-| 1 | Define the problem | n/a | `README.md` | done |
+| 1 | Define the problem | n/a | `README.md`, `REPORT.md` | done |
 | 2 | Select three datasets | n/a | `README.md`, `results/data_stats.md` | done |
 | 3 | Explore and prepare data | `src/prepare_data.py` | `data/processed/`, `results/data_stats.md` | done |
 | 4 | Build baseline models | `src/baselines.py` | `results/baseline_within.csv` | done |
-| 5 | Build the transformer model | `src/train_transformer.py` | `models/distilbert_*`, `results/transformer/` | in progress |
-| 6 | Tune the models | `src/tune.py` | `configs/final.yaml`, `results/tuning_*.csv` | in progress |
-| 7 | Within-domain experiments | `src/run_within.py` | `results/within_domain.csv` | pending |
-| 8 | Cross-domain experiments | `src/run_cross.py` | `results/cross_domain.csv` | pending |
-| 9 | Mixed-domain experiment | `src/run_mixed.py` | `results/mixed_domain.csv` | pending |
-| 10 | Evaluate and visualise | `src/evaluate.py`, `src/visualize.py` | `results/tables/`, `figures/` | pending |
-| 11 | Analyse errors | `src/error_analysis.py` | `results/error_analysis.md` | pending |
-| 12 | Streamlit demonstration | `app/streamlit_app.py` | demo | pending |
+| 5 | Build the transformer model | `src/train_transformer.py` | `models/distilbert_*`, `results/transformer/` | done |
+| 6 | Tune the models | `src/tune.py` | `configs/final.yaml`, `results/tuning_*.csv` | done |
+| 7 | Within-domain experiments | `src/run_within.py` | `results/within_domain.csv` | done |
+| 8 | Cross-domain experiments | `src/run_cross.py` | `results/cross_domain.csv` | done |
+| 9 | Mixed-domain experiment | `src/run_mixed.py` | `results/mixed_domain.csv` | done |
+| 10 | Evaluate and visualise | `src/evaluate.py`, `src/visualize.py` | `results/tables/`, `figures/` | done |
+| 11 | Analyse errors | `src/error_analysis.py` | `results/error_analysis.md`, `results/error_taxonomy.csv` | done |
+| 12 | Streamlit demonstration | `app/streamlit_app.py` | demo | code written, needs a manual check |
 | 13 | Presentation and video | n/a | slides, video | pending |
 | 14 | Package the submission | n/a | reflection, GAI declaration | pending |
+
+### Results so far
+
+Within-domain macro-F1: DistilBERT 0.902 (IMDb), 0.949 (Yelp), 0.925 (Amazon). TF-IDF SVM
+0.900, 0.932, 0.881. Logistic Regression 0.898, 0.925, 0.880.
+
+Cross-domain: DistilBERT loses 0.097 going from Yelp to IMDb and 0.000 going from IMDb to
+Yelp. The TF-IDF models lose roughly twice as much on average (0.063 to 0.065 against 0.034
+for DistilBERT).
+
+Mixed-domain: 3 of 9 combinations beat the best single source, mean change -0.003. All three
+gains land on the Amazon target.
+
+Full write-up: `REPORT.md`. Figures: `figures/`.
+
+### Remaining work
+
+- Check the Streamlit demo runs against the saved checkpoints.
+- Record the 10 minute video and build the slides.
+- Sign the group reflection document and the GAI declaration.
+- Delete the checkpoints from the server after the demo, per the disk rule.
 
 ### Notes carried between stages
 
@@ -120,3 +141,5 @@ Last updated: 2026-11-05 12:12 SGT.
 - Yelp labels 3 to 4 stars as positive and drops 5-star reviews. Its positive class is weaker than the other two, which is a known confound.
 - Amazon Polarity spans many product categories including Movies and TV, so part of its vocabulary overlaps with IMDb. Exact duplicate screening runs across datasets; near-duplicate screening does not.
 - GPU 0 is used by another account. Every training command sets `CUDA_VISIBLE_DEVICES` to 1 or 2.
+- transformers 4.46.3 is pinned because newer releases need torch 2.6 or later and the server has torch 2.5.1.
+- The DistilBERT learning rate tuning produced two runs that scored the same to four decimals (0.9090 on IMDb validation). The script picked 2e-5 and every domain model uses it.
