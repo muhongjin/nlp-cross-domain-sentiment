@@ -133,7 +133,7 @@ export CUDA_VISIBLE_DEVICES=1
 bash scripts/run_all.sh
 ```
 
-The full run takes about 90 minutes on a single RTX 3090, dominated by 14 DistilBERT
+The full run takes about 90 minutes on a single RTX 3090, dominated by 16 DistilBERT
 fine-tunes: 2 for the learning-rate search, 3 within-domain, 3 mixed-domain, 2 for the
 data-scaling ablation and 6 for the seed check. Everything else takes seconds.
 

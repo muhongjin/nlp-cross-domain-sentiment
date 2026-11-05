@@ -1,7 +1,7 @@
 #!/bin/bash
 # Reproduce every stage in order on the GPU server.
 # Usage: bash scripts/run_all.sh
-# Runtime is about 90 minutes on one RTX 3090, dominated by the 14 DistilBERT fine-tunes.
+# Runtime is about 90 minutes on one RTX 3090, dominated by the 16 DistilBERT fine-tunes.
 set -e
 cd "$(dirname "$0")/.."
 source "$HOME/miniconda3/etc/profile.d/conda.sh"
