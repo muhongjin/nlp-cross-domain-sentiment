@@ -34,14 +34,15 @@ Headline numbers from `REPORT.md`:
 
 DistilBERT starts highest and degrades least. Transfer is asymmetric: a Yelp-trained model
 loses 0.097 macro-F1 on IMDb, while an IMDb-trained model loses 0.000 on Yelp. Mixed-domain
-training changed scores by less than 0.02 macro-F1 either way, and every gain landed on the
-Amazon target.
+training changed scores by no more than 0.022 macro-F1 either way, and every gain landed on
+the Amazon target.
 
 Two extra checks support the numbers. Near-duplicate screening over all 90,000 pooled
 reviews found 11 near-duplicate pairs, none across datasets and none between a train and
 test split, so the comparison is not inflated by leakage. Retraining DistilBERT with two
-additional seeds keeps the within-domain scores within 0.005 macro-F1, which is small next
-to the cross-domain gaps.
+additional seeds gives a standard deviation of at most 0.007 macro-F1 (full range 0.013),
+which is small next to the cross-domain gaps but large enough that the 0.002 IMDb margin
+between DistilBERT and TF-IDF SVM should be read as a tie.
 
 Vocabulary distance between domains does not explain the losses. IMDb and Amazon have the
 lowest Jensen-Shannon divergence (0.146) yet still cost each other 0.022 to 0.039 macro-F1.
