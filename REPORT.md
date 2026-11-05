@@ -214,15 +214,15 @@ The three datasets use different rules to build their positive class, so part of
 
 The domains are not equally distant. Yelp and Amazon both collect consumer verdicts on a purchase, while IMDb collects long-form film criticism. Treating the three as three points on the same line would be wrong.
 
-Duplicate screening covers exact normalised matches. Near-duplicates with different wording, especially between Amazon's film category and IMDb, are not removed.
+Near-duplicate screening covers pairs at 0.8 Jaccard similarity on word 5-grams and above. It found 11 such pairs, all inside IMDb. Pairs that paraphrase each other below that threshold, especially between Amazon's film category and IMDb, could still remain.
 
-Each model was trained once per setting with a single seed, so small differences between models should be read with caution. Training was capped at 20,000 rows to keep the comparison fair, which is well below what DistilBERT can use.
+Each model was trained once per setting, with the exception of the DistilBERT within-domain runs, which were repeated with three seeds. Training was capped at 20,000 rows to keep the comparison fair, which is well below what DistilBERT can use.
 
 Mixed-domain training holds the total training size constant. That answers whether domain diversity helps at fixed budget, not whether adding more data from a second domain helps in absolute terms.
 
 ## 7. Conclusion
 
-Sentiment models do not transfer for free. Averaged over the three classifiers, macro-F1 fell from 0.910 within a domain to 0.856 across domains. DistilBERT started highest and lost the least, which suggests that pretraining buys some robustness to vocabulary shift. The TF-IDF models dropped roughly twice as far.
+Sentiment models do not transfer for free. Averaged over the three classifiers and the seed 42 runs, macro-F1 fell from 0.910 within a domain to 0.856 across domains. DistilBERT started highest and lost the least, which suggests that pretraining buys some robustness to vocabulary shift. The TF-IDF models dropped roughly twice as far.
 
 The direction of transfer matters more than the size of the training set. A model trained on long, nuanced film reviews handled short product and service reviews well. A model trained on short verdicts struggled with film reviews. Mixed-domain training at a fixed budget gave small and uneven changes, concentrated on Amazon, the most heterogeneous domain, and those changes sit close to the seed-to-seed spread.
 

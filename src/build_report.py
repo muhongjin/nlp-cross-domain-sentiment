@@ -476,14 +476,15 @@ def main():
     )
     add("")
     add(
-        "Duplicate screening covers exact normalised matches. Near-duplicates with different "
-        "wording, especially between Amazon's film category and IMDb, are not removed."
+        "Near-duplicate screening covers pairs at 0.8 Jaccard similarity on word 5-grams and "
+        "above. It found 11 such pairs, all inside IMDb. Pairs that paraphrase each other below "
+        "that threshold, especially between Amazon's film category and IMDb, could still remain."
     )
     add("")
     add(
-        "Each model was trained once per setting with a single seed, so small differences between "
-        "models should be read with caution. Training was capped at 20,000 rows to keep the "
-        "comparison fair, which is well below what DistilBERT can use."
+        "Each model was trained once per setting, with the exception of the DistilBERT "
+        "within-domain runs, which were repeated with three seeds. Training was capped at 20,000 "
+        "rows to keep the comparison fair, which is well below what DistilBERT can use."
     )
     add("")
     add(
@@ -499,11 +500,11 @@ def main():
         within_mean = sum(within_avg.values()) / len(within_avg)
         cross_mean = sum(cross_avg.values()) / len(cross_avg)
         add(
-            f"Sentiment models do not transfer for free. Averaged over the three classifiers, "
-            f"macro-F1 fell from {within_mean:.3f} within a domain to {cross_mean:.3f} across "
-            f"domains. DistilBERT started highest and lost the least, which suggests that "
-            f"pretraining buys some robustness to vocabulary shift. The TF-IDF models dropped "
-            f"roughly twice as far."
+            f"Sentiment models do not transfer for free. Averaged over the three classifiers and "
+            f"the seed 42 runs, macro-F1 fell from {within_mean:.3f} within a domain to "
+            f"{cross_mean:.3f} across domains. DistilBERT started highest and lost the least, "
+            f"which suggests that pretraining buys some robustness to vocabulary shift. The "
+            f"TF-IDF models dropped roughly twice as far."
         )
         add("")
     add(
