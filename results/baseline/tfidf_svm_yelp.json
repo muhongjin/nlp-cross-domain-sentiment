@@ -1,0 +1,61 @@
+{
+  "domain": "yelp",
+  "model": "tfidf_svm",
+  "train_time_s": 4.11,
+  "val": {
+    "accuracy": 0.932,
+    "macro_f1": 0.9319982999574989,
+    "per_class": {
+      "negative": {
+        "precision": 0.9363636363636364,
+        "recall": 0.927,
+        "f1": 0.9316582914572864,
+        "support": 1000
+      },
+      "positive": {
+        "precision": 0.9277227722772278,
+        "recall": 0.937,
+        "f1": 0.9323383084577115,
+        "support": 1000
+      }
+    },
+    "confusion_matrix": [
+      [
+        927,
+        73
+      ],
+      [
+        63,
+        937
+      ]
+    ]
+  },
+  "test": {
+    "accuracy": 0.9335,
+    "macro_f1": 0.9334973605102387,
+    "per_class": {
+      "negative": {
+        "precision": 0.9281058660873001,
+        "recall": 0.9398,
+        "f1": 0.9339163271390242,
+        "support": 5000
+      },
+      "positive": {
+        "precision": 0.9390318006886773,
+        "recall": 0.9272,
+        "f1": 0.9330783938814532,
+        "support": 5000
+      }
+    },
+    "confusion_matrix": [
+      [
+        4699,
+        301
+      ],
+      [
+        364,
+        4636
+      ]
+    ]
+  }
+}

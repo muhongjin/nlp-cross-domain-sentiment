@@ -1,0 +1,61 @@
+{
+  "domain": "amazon",
+  "model": "tfidf_lr",
+  "train_time_s": 2.69,
+  "val": {
+    "accuracy": 0.868,
+    "macro_f1": 0.8679915514592934,
+    "per_class": {
+      "negative": {
+        "precision": 0.8622047244094488,
+        "recall": 0.876,
+        "f1": 0.8690476190476191,
+        "support": 1000
+      },
+      "positive": {
+        "precision": 0.8739837398373984,
+        "recall": 0.86,
+        "f1": 0.8669354838709677,
+        "support": 1000
+      }
+    },
+    "confusion_matrix": [
+      [
+        876,
+        124
+      ],
+      [
+        140,
+        860
+      ]
+    ]
+  },
+  "test": {
+    "accuracy": 0.8742,
+    "macro_f1": 0.8741994967979871,
+    "per_class": {
+      "negative": {
+        "precision": 0.8727091633466135,
+        "recall": 0.8762,
+        "f1": 0.8744510978043912,
+        "support": 5000
+      },
+      "positive": {
+        "precision": 0.87570281124498,
+        "recall": 0.8722,
+        "f1": 0.8739478957915832,
+        "support": 5000
+      }
+    },
+    "confusion_matrix": [
+      [
+        4381,
+        619
+      ],
+      [
+        639,
+        4361
+      ]
+    ]
+  }
+}
