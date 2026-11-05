@@ -30,7 +30,7 @@ Machine snapshot from 2026-11-05:
 | GPU | 4 x RTX 3090 24 GB, driver 535.113.01, CUDA 12.2. GPU 0 is usually busy with another user's jobs, so the project defaults to GPU 1. |
 | CPU | Threadripper PRO 3955WX, 16 cores / 32 threads |
 | RAM | 251 GiB |
-| Home | `/media/mldadmin/home/s126mdg312_01`, on the shared 7.3 T volume |
+| Home | `/media/mldadmin/home/<ntu-account>`, on the shared 7.3 T volume |
 | Network | Direct access to HuggingFace, PyPI and GitHub |
 | sudo | Not available. Everything installs under the home directory. |
 
