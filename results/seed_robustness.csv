@@ -1,0 +1,4 @@
+domain,seeds,runs,test_macro_f1_mean,test_macro_f1_std,test_macro_f1_min,test_macro_f1_max
+IMDb,"42, 43, 44",3,0.9066,0.0043,0.9018,0.9103
+Yelp,"42, 43, 44",3,0.9429,0.0065,0.9358,0.9486
+Amazon,"42, 43, 44",3,0.9278,0.0021,0.9254,0.9294

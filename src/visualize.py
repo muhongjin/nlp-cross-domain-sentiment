@@ -243,10 +243,10 @@ def fig_per_class():
         ax.set_xticks(xs)
         ax.set_xticklabels([DOMAIN_SHORT[d] for d in DOMAINS])
         ax.set_title(title)
-        ax.set_ylim(0, 1.0)
+        ax.set_ylim(0, 1.15)
         ax.set_xlabel("test domain")
     axes[0].set_ylabel("recall")
-    axes[0].legend(fontsize=7)
+    axes[0].legend(fontsize=7, loc="upper center", ncol=3, frameon=False, bbox_to_anchor=(0.5, 1.0))
     fig.suptitle("DistilBERT recall by class and domain")
     save(fig, "fig_per_class_recall.png")
 

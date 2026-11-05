@@ -38,3 +38,17 @@ python src/run_mixed.py
 python src/evaluate.py
 python src/visualize.py
 python src/error_analysis.py
+
+# Extra checks: domain distance, near-duplicate screening, feature overlap, multi-seed robustness.
+python src/domain_distance.py
+python src/near_duplicates.py
+python src/feature_analysis.py
+for s in 43 44; do
+  for d in imdb yelp amazon; do
+    python src/train_transformer.py --train_domains "$d" --test_domain "$d" --lr "$LR" --seed "$s" --tag "seed${s}_${d}"
+  done
+done
+python src/run_seeds.py
+
+# Assemble the written report from the result files.
+python src/build_report.py

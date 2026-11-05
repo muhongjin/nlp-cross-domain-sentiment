@@ -124,15 +124,24 @@ Extra analysis inside Stage 3, 10 and 11:
 
 ### Results so far
 
-Within-domain macro-F1: DistilBERT 0.902 (IMDb), 0.949 (Yelp), 0.925 (Amazon). TF-IDF SVM
-0.900, 0.932, 0.881. Logistic Regression 0.898, 0.925, 0.880.
+Within-domain macro-F1: DistilBERT 0.907 (IMDb), 0.943 (Yelp), 0.928 (Amazon), averaged over
+three seeds. TF-IDF SVM 0.900, 0.932, 0.881. Logistic Regression 0.898, 0.925, 0.880.
 
 Cross-domain: DistilBERT loses 0.097 going from Yelp to IMDb and 0.000 going from IMDb to
 Yelp. The TF-IDF models lose roughly twice as much on average (0.063 to 0.065 against 0.034
 for DistilBERT).
 
 Mixed-domain: 3 of 9 combinations beat the best single source, mean change -0.003. All three
-gains land on the Amazon target.
+gains land on the Amazon target, and the sizes are close to the seed-to-seed spread, so the
+result is weak evidence.
+
+Seed spread: standard deviation across three seeds is 0.002 to 0.007 macro-F1, full range
+0.013. The IMDb gap between DistilBERT and TF-IDF SVM (0.002) sits inside that spread.
+
+Data checks: near-duplicate screening over 90,000 pooled reviews found 11 pairs, all inside
+IMDb, none across datasets and none between train and test. Jensen-Shannon divergence is
+lowest between IMDb and Amazon (0.146) and highest between IMDb and Yelp (0.225), which does
+not line up with the transfer losses. Target review length lines up better.
 
 Full write-up: `REPORT.md`. Figures: `figures/`.
 

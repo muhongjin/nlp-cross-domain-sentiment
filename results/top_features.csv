@@ -1,0 +1,91 @@
+domain,rank,positive,negative
+imdb,1,great,bad
+imdb,2,excellent,worst
+imdb,3,wonderful,the worst
+imdb,4,best,awful
+imdb,5,the best,boring
+imdb,6,perfect,waste
+imdb,7,love,no
+imdb,8,well,poor
+imdb,9,amazing,terrible
+imdb,10,loved,nothing
+imdb,11,enjoyed,stupid
+imdb,12,fun,worse
+imdb,13,brilliant,horrible
+imdb,14,favorite,script
+imdb,15,beautiful,dull
+imdb,16,very,even
+imdb,17,superb,minutes
+imdb,18,still,poorly
+imdb,19,also,waste of
+imdb,20,is great,at all
+imdb,21,job,unfortunately
+imdb,22,both,plot
+imdb,23,today,instead
+imdb,24,definitely,just
+imdb,25,highly,ridiculous
+imdb,26,liked,money
+imdb,27,enjoy,any
+imdb,28,fantastic,lame
+imdb,29,bit,annoying
+imdb,30,always,oh
+yelp,1,great,not
+yelp,2,delicious,no
+yelp,3,amazing,worst
+yelp,4,love,horrible
+yelp,5,best,terrible
+yelp,6,awesome,bad
+yelp,7,definitely,bland
+yelp,8,the best,rude
+yelp,9,good,ok
+yelp,10,excellent,better
+yelp,11,friendly,overpriced
+yelp,12,always,the worst
+yelp,13,perfect,nothing
+yelp,14,favorite,was
+yelp,15,loved,mediocre
+yelp,16,fantastic,money
+yelp,17,fresh,over
+yelp,18,and,awful
+yelp,19,also,poor
+yelp,20,fun,don
+yelp,21,enjoyed,disappointed
+yelp,22,nice,not worth
+yelp,23,wonderful,at best
+yelp,24,was great,told
+yelp,25,tasty,just
+yelp,26,little,never
+yelp,27,yummy,dirty
+yelp,28,friendly and,disappointing
+yelp,29,recommend,wasn
+yelp,30,clean,okay
+amazon,1,great,not
+amazon,2,love,waste
+amazon,3,excellent,bad
+amazon,4,the best,disappointed
+amazon,5,easy,boring
+amazon,6,best,worst
+amazon,7,is great,money
+amazon,8,and,poor
+amazon,9,perfect,nothing
+amazon,10,well,don
+amazon,11,highly,the worst
+amazon,12,easy to,no
+amazon,13,amazing,horrible
+amazon,14,wonderful,at all
+amazon,15,good,is not
+amazon,16,awesome,poorly
+amazon,17,fun,not worth
+amazon,18,my,disappointment
+amazon,19,works,waste of
+amazon,20,enjoyed,unfortunately
+amazon,21,love this,didn
+amazon,22,highly recommend,awful
+amazon,23,loved,disappointing
+amazon,24,must,instead
+amazon,25,favorite,terrible
+amazon,26,loves,would not
+amazon,27,this is,not recommend
+amazon,28,you,your money
+amazon,29,pleased,doesn
+amazon,30,nice,was

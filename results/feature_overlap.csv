@@ -1,0 +1,7 @@
+polarity,domain_a,domain_b,shared_in_top20,jaccard,shared_terms
+positive,imdb,yelp,11,0.379,"also, amazing, best, excellent, favorite, fun, great, love, loved, perfect, the best"
+positive,imdb,amazon,12,0.429,"amazing, best, enjoyed, excellent, fun, great, is great, love, perfect, the best, well, wonderful"
+positive,yelp,amazon,11,0.379,"amazing, and, awesome, best, excellent, fun, good, great, love, perfect, the best"
+negative,imdb,yelp,9,0.29,"awful, bad, horrible, no, nothing, poor, terrible, the worst, worst"
+negative,imdb,amazon,12,0.429,"at all, bad, boring, horrible, no, nothing, poor, poorly, the worst, waste, waste of, worst"
+negative,yelp,amazon,10,0.333,"bad, don, horrible, money, no, not, nothing, poor, the worst, worst"

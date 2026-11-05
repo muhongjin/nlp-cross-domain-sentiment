@@ -4,7 +4,7 @@ NLP group project. Three review domains, four models, three experimental setting
 
 ## Abstract
 
-We compare a majority-class baseline, two TF-IDF classifiers and a fine-tuned DistilBERT model on movie, business and product reviews. Inside a domain, DistilBERT reached the highest average macro-F1 at 0.925. Crossing a domain boundary cost the TF-IDF models about 0.065 macro-F1 and DistilBERT about 0.034, so the transformer degraded more gently even though it started higher. Mixed-domain training changed the result by no more than 0.022 macro-F1 in either direction, and it helped only when the target was the product domain.
+We compare a majority-class baseline, two TF-IDF classifiers and a fine-tuned DistilBERT model on movie, business and product reviews. Inside a domain, DistilBERT reached the highest average macro-F1 at 0.925. Crossing a domain boundary cost the TF-IDF models about 0.065 macro-F1 and DistilBERT about 0.034, so the transformer degraded more gently even though it started higher. Mixed-domain training changed the result by no more than 0.022 macro-F1 in either direction, which is close to the seed-to-seed spread, and it helped only when the target was the product domain.
 
 ## 1. Introduction
 
@@ -73,7 +73,7 @@ Three experimental settings:
 
 ![Within-domain macro-F1](figures/fig_within_domain.png)
 
-DistilBERT wins on all three domains, but the margin over TF-IDF is small on IMDb. IMDb is also the hardest domain in absolute terms, which fits the data: film reviews are long, allusive and often mixed in tone, while product and business reviews tend to state a verdict quickly.
+DistilBERT is highest on all three domains, but on IMDb the margin over TF-IDF is about two thousandths of a point, which is inside the seed-to-seed spread reported in 4.5. Treat the two as tied on IMDb. IMDb is also the hardest domain in absolute terms, which fits the data: film reviews are long, allusive and often mixed in tone, while product and business reviews tend to state a verdict quickly.
 
 ### 4.2 Cross-domain
 
@@ -123,7 +123,7 @@ The asymmetry is worth spelling out. A model trained on Yelp loses 0.097 macro-F
 
 Vocabulary distance does not line up with the size of the transfer loss. IMDb and Amazon have the lowest divergence at 0.146, partly because Amazon reviews cover films and books, yet moving between them still costs DistilBERT 0.022 to 0.039 macro-F1. IMDb and Yelp are the most distant pair at 0.225, and one direction of that transfer costs nothing at all.
 
-Length is a better predictor than vocabulary. The target domain's mean review length tracks the drop closely: IMDb averages 229 words, Yelp 133 and Amazon 74, and models trained on the short domains lose most when IMDb is the target. What hurts is a mismatch between how much text the model expects and how much it gets.
+Target length tracks the drop better than vocabulary distance does. IMDb averages 229 words, Yelp 133 and Amazon 74, and the models trained on the two short domains lose most when IMDb is the target (0.039 and 0.097 macro-F1). The mismatch between how much text a model expects and how much it gets matters more than which words appear.
 
 ### 4.4 Mixed-domain
 
@@ -143,11 +143,34 @@ Length is a better predictor than vocabulary. The target domain's mean review le
 
 Mixed-domain training beat the best single source in 3 of 9 model and target combinations, with a mean change of -0.003 macro-F1. Every gain came from the Amazon target: the two TF-IDF models and DistilBERT all improved there. On IMDb and Yelp the mixed models were slightly worse than the best single source.
 
-The pattern is less obvious than it first looks. IMDb is the hardest target in the cross-domain table, yet mixed-domain training does not help there. Amazon gains because it is the most heterogeneous domain: product reviews span books, music, electronics and films, so a second source adds vocabulary instead of noise. IMDb's difficulty comes from long text and mixed tone, and a wider vocabulary does not fix either.
+The pattern is less obvious than it first looks. IMDb is the hardest target in the cross-domain table, yet mixed-domain training does not help there. Amazon gains because it is the most heterogeneous domain: product reviews span books, music, electronics and films, so a second source adds vocabulary instead of noise. IMDb's difficulty comes from long text and mixed tone, and a wider vocabulary does not fix either. Section 4.5 shows that these changes are close to the seed-to-seed spread, so the mixed-domain comparison supports a weak conclusion only.
 
 ### 4.5 Robustness across seeds
 
-Seed runs were not available when this report was generated.
+| domain   | seeds      |   runs |   mean test macro-F1 |    std |    min |    max |
+|:---------|:-----------|-------:|---------------------:|-------:|-------:|-------:|
+| IMDb     | 42, 43, 44 |      3 |               0.9066 | 0.0043 | 0.9018 | 0.9103 |
+| Yelp     | 42, 43, 44 |      3 |               0.9429 | 0.0065 | 0.9358 | 0.9486 |
+| Amazon   | 42, 43, 44 |      3 |               0.9278 | 0.0021 | 0.9254 | 0.9294 |
+
+DistilBERT was retrained on each domain with two extra seeds to see how much of the table is noise. The standard deviation across the three runs is at most 0.0065 macro-F1 and the full range is 0.0128. That changes how the rest of the results should be read.
+
+The cross-domain losses of 0.04 to 0.10 are several times larger than the spread, so they stand. The IMDb margin between DistilBERT and TF-IDF SVM is not larger than the spread, so those two models are tied there. The mixed-domain changes of 0.005 to 0.022 are the same order of magnitude as the spread, so the mixed-domain result is weak evidence rather than a firm gain.
+
+### 4.6 What the classifiers key on
+
+| polarity   | domain pair     |   shared terms in top 20 |   Jaccard | shared words                                                                                      |
+|:-----------|:----------------|-------------------------:|----------:|:--------------------------------------------------------------------------------------------------|
+| positive   | IMDb and Yelp   |                       11 |     0.379 | also, amazing, best, excellent, favorite, fun, great, love, loved, perfect, the best              |
+| positive   | IMDb and Amazon |                       12 |     0.429 | amazing, best, enjoyed, excellent, fun, great, is great, love, perfect, the best, well, wonderful |
+| positive   | Yelp and Amazon |                       11 |     0.379 | amazing, and, awesome, best, excellent, fun, good, great, love, perfect, the best                 |
+| negative   | IMDb and Yelp   |                        9 |     0.29  | awful, bad, horrible, no, nothing, poor, terrible, the worst, worst                               |
+| negative   | IMDb and Amazon |                       12 |     0.429 | at all, bad, boring, horrible, no, nothing, poor, poorly, the worst, waste, waste of, worst       |
+| negative   | Yelp and Amazon |                       10 |     0.333 | bad, don, horrible, money, no, not, nothing, poor, the worst, worst                               |
+
+Positive vocabulary transfers. Eleven or twelve of the twenty strongest positive terms are shared by every pair of domains, and they are plain sentiment adjectives: great, best, love, excellent, amazing, perfect. Negative vocabulary overlaps less, between nine and twelve terms, and the strongest negative features differ in kind. IMDb's are sentiment words (awful, boring, waste), while Yelp's and Amazon's include negation markers such as not, no and don among their top negative features.
+
+That difference matters for transfer. A model that has learned to read negation as the main negative signal will misfire when the target domain expresses negativity through adjectives instead, and the reverse also holds. It also explains why negation and contrast dominate the error categories in section 5.
 
 ## 5. Error analysis
 
@@ -179,7 +202,7 @@ The opposite happens with a Yelp-trained model on IMDb. It calls 98 positive fil
 
 ![Recall by class and domain](figures/fig_per_class_recall.png)
 
-The recall plot makes the same point per class. Positive recall stays high for every source when the target is Yelp or Amazon, and collapses only on IMDb. Negative recall is the fragile one for models trained on IMDb and asked to read Amazon.
+The recall plot makes the same point per class. Positive recall stays high for every source when the target is Yelp or Amazon, and drops furthest on IMDb, where a Yelp-trained model recovers only 0.83 of the positive reviews. Negative recall is the fragile one for models trained on IMDb and asked to read Amazon.
 
 The most common categories are contrast and negation, both above a third of the tagged errors. A typical failure is a review that praises some aspects and criticises others, with the negative clause carrying the final verdict: the topics in this book are really great, none are covered in any detail unfortunately. Mixed-opinion reviews make up 13 percent. Long reviews make up 7 percent and are almost entirely IMDb samples, where models that truncate at 256 tokens lose the concluding sentence.
 
@@ -201,7 +224,7 @@ Mixed-domain training holds the total training size constant. That answers wheth
 
 Sentiment models do not transfer for free. Averaged over the three classifiers, macro-F1 fell from 0.910 within a domain to 0.856 across domains. DistilBERT started highest and lost the least, which suggests that pretraining buys some robustness to vocabulary shift. The TF-IDF models dropped roughly twice as far.
 
-The direction of transfer matters more than the size of the training set. A model trained on long, nuanced film reviews handled short product and service reviews well. A model trained on short verdicts struggled with film reviews. Mixed-domain training at a fixed budget gave small and uneven gains, concentrated on Amazon, the most heterogeneous domain.
+The direction of transfer matters more than the size of the training set. A model trained on long, nuanced film reviews handled short product and service reviews well. A model trained on short verdicts struggled with film reviews. Mixed-domain training at a fixed budget gave small and uneven changes, concentrated on Amazon, the most heterogeneous domain, and those changes sit close to the seed-to-seed spread.
 
 The practical recommendation for a business is to test a reused model on a sample of the new domain before trusting it, and to expect the largest errors where reviews mix praise and criticism or rely on negation.
 

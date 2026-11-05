@@ -53,6 +53,7 @@ def main():
     stats = load("data_stats.csv")
     errors = load("error_cases.csv")
     distance = load("domain_distance.csv")
+    features = load("feature_overlap.csv")
     seeds = load("seed_robustness.csv")
     near_path = os.path.join(RESULTS, "near_duplicates.json")
     near = None
@@ -97,8 +98,8 @@ def main():
             f"Crossing a domain boundary cost the TF-IDF models about {drops[biggest]:.3f} macro-F1 "
             f"and DistilBERT about {drops[smallest]:.3f}, so the transformer degraded more gently "
             f"even though it started higher. Mixed-domain training changed the result by no more "
-            f"than 0.022 macro-F1 in either direction, and it helped only when the target was the "
-            f"product domain."
+            f"than 0.022 macro-F1 in either direction, which is close to the seed-to-seed spread, "
+            f"and it helped only when the target was the product domain."
         )
     add("")
 
@@ -224,10 +225,11 @@ def main():
         add("![Within-domain macro-F1](figures/fig_within_domain.png)")
         add("")
         add(
-            "DistilBERT wins on all three domains, but the margin over TF-IDF is small on IMDb. "
-            "IMDb is also the hardest domain in absolute terms, which fits the data: film reviews "
-            "are long, allusive and often mixed in tone, while product and business reviews tend "
-            "to state a verdict quickly."
+            "DistilBERT is highest on all three domains, but on IMDb the margin over TF-IDF is "
+            "about two thousandths of a point, which is inside the seed-to-seed spread reported in "
+            "4.5. Treat the two as tied on IMDb. IMDb is also the hardest domain in absolute terms, "
+            "which fits the data: film reviews are long, allusive and often mixed in tone, while "
+            "product and business reviews tend to state a verdict quickly."
         )
     add("")
 
@@ -335,7 +337,8 @@ def main():
             "because it is the most heterogeneous domain: product reviews span books, music, "
             "electronics and films, so a second source adds vocabulary instead of noise. IMDb's "
             "difficulty comes from long text and mixed tone, and a wider vocabulary does not fix "
-            "either."
+            "either. Section 4.5 shows that these changes are close to the seed-to-seed spread, so "
+            "the mixed-domain comparison supports a weak conclusion only."
         )
         add("")
 
@@ -346,18 +349,51 @@ def main():
         table.columns = ["domain", "seeds", "runs", "mean test macro-F1", "std", "min", "max"]
         add(md(table, index=False))
         add("")
-        spread = seeds["test_macro_f1_std"].max()
+        spread = float(seeds["test_macro_f1_std"].max())
+        widest = float((seeds["test_macro_f1_max"] - seeds["test_macro_f1_min"]).max())
         add(
-            f"DistilBERT was retrained on each domain with two extra seeds to check that the "
-            f"ranking is not an accident of one initialisation. The standard deviation across the "
-            f"three runs is at most {spread:.4f} macro-F1, which is small next to the 0.02 to 0.10 "
-            f"gaps in the cross-domain table. The within-domain ordering and the size of the "
-            f"transfer losses are stable."
+            f"DistilBERT was retrained on each domain with two extra seeds to see how much of the "
+            f"table is noise. The standard deviation across the three runs is at most {spread:.4f} "
+            f"macro-F1 and the full range is {widest:.4f}. That changes how the rest of the results "
+            f"should be read."
+        )
+        add("")
+        add(
+            "The cross-domain losses of 0.04 to 0.10 are several times larger than the spread, so "
+            "they stand. The IMDb margin between DistilBERT and TF-IDF SVM is not larger than the "
+            "spread, so those two models are tied there. The mixed-domain changes of 0.005 to 0.022 "
+            "are the same order of magnitude as the spread, so the mixed-domain result is weak "
+            "evidence rather than a firm gain."
         )
     else:
         add("Seed runs were not available when this report was generated.")
     add("")
 
+    add("### 4.6 What the classifiers key on")
+    add("")
+    if features is not None:
+        table = features.copy()
+        table["pair"] = table["domain_a"].map(DOMAIN_LABEL) + " and " + table["domain_b"].map(DOMAIN_LABEL)
+        table = table[["polarity", "pair", "shared_in_top20", "jaccard", "shared_terms"]]
+        table.columns = ["polarity", "domain pair", "shared terms in top 20", "Jaccard", "shared words"]
+        add(md(table, index=False))
+        add("")
+        add(
+            "Positive vocabulary transfers. Eleven or twelve of the twenty strongest positive "
+            "terms are shared by every pair of domains, and they are plain sentiment adjectives: "
+            "great, best, love, excellent, amazing, perfect. Negative vocabulary overlaps less, "
+            "between nine and twelve terms, and the strongest negative features differ in kind. "
+            "IMDb's are sentiment words (awful, boring, waste), while Yelp's and Amazon's include "
+            "negation markers such as not, no and don among their top negative features."
+        )
+        add("")
+        add(
+            "That difference matters for transfer. A model that has learned to read negation as "
+            "the main negative signal will misfire when the target domain expresses negativity "
+            "through adjectives instead, and the reverse also holds. It also explains why "
+            "negation and contrast dominate the error categories in section 5."
+        )
+    add("")
     add("## 5. Error analysis")
     add("")
     add(
@@ -402,8 +438,9 @@ def main():
         add("")
         add(
             "The recall plot makes the same point per class. Positive recall stays high for every "
-            "source when the target is Yelp or Amazon, and collapses only on IMDb. Negative recall "
-            "is the fragile one for models trained on IMDb and asked to read Amazon."
+            "source when the target is Yelp or Amazon, and drops furthest on IMDb, where a "
+            "Yelp-trained model recovers only 0.83 of the positive reviews. Negative recall is the "
+            "fragile one for models trained on IMDb and asked to read Amazon."
         )
     add("")
     add(
@@ -473,7 +510,8 @@ def main():
         "The direction of transfer matters more than the size of the training set. A model trained "
         "on long, nuanced film reviews handled short product and service reviews well. A model "
         "trained on short verdicts struggled with film reviews. Mixed-domain training at a fixed "
-        "budget gave small and uneven gains, concentrated on Amazon, the most heterogeneous domain."
+        "budget gave small and uneven changes, concentrated on Amazon, the most heterogeneous "
+        "domain, and those changes sit close to the seed-to-seed spread."
     )
     add("")
     add(
