@@ -1,0 +1,10 @@
+train_rows,source,target,macro_f1
+5k,imdb,imdb,0.893
+5k,imdb,yelp,0.9006
+5k,imdb,amazon,0.8929
+10k,imdb,imdb,0.8942
+10k,imdb,yelp,0.902
+10k,imdb,amazon,0.8958
+20k,imdb,imdb,0.9018
+20k,imdb,yelp,0.9015
+20k,imdb,amazon,0.8799

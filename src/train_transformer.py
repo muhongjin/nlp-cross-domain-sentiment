@@ -66,6 +66,8 @@ def main():
     parser.add_argument("--tag", default="")
     parser.add_argument("--val_per_domain", type=int, default=1000)
     parser.add_argument("--seed", type=int, default=SEED)
+    parser.add_argument("--train_size", type=int, default=0,
+                        help="total balanced training rows; 0 uses the stage default")
     args = parser.parse_args()
 
     train_domains = [d.strip() for d in args.train_domains.split(",") if d.strip()]
@@ -89,6 +91,8 @@ def main():
     tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
 
     per_domain = MIXED_TRAIN_TOTAL // len(train_domains) if is_mixed else 20000
+    if args.train_size:
+        per_domain = args.train_size // len(train_domains)
     train_df = build_training_frame(train_domains, per_domain)
     val_df = build_validation_frame(train_domains, args.val_per_domain * len(train_domains))
     test_df = load_split(test_domain, "test")

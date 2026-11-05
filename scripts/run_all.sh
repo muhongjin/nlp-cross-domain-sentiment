@@ -43,6 +43,11 @@ python src/error_analysis.py
 python src/domain_distance.py
 python src/near_duplicates.py
 python src/feature_analysis.py
+
+# Data-scaling ablation: DistilBERT on IMDb with 5k, 10k and 20k rows.
+python src/train_transformer.py --train_domains imdb --test_domain imdb --lr "$LR" --tag scale5k --train_size 5000
+python src/train_transformer.py --train_domains imdb --test_domain imdb --lr "$LR" --tag scale10k --train_size 10000
+python src/data_scaling.py
 for s in 43 44; do
   for d in imdb yelp amazon; do
     python src/train_transformer.py --train_domains "$d" --test_domain "$d" --lr "$LR" --seed "$s" --tag "seed${s}_${d}"

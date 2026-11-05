@@ -34,7 +34,7 @@ Length statistics for the test splits:
 
 The three datasets build their labels in different ways. Yelp treats 3 and 4 stars as positive and drops 5-star reviews, so its positive class is milder than IMDb's (7 out of 10) and Amazon's (4 out of 5 stars). This is a property of the source data, not something this project changed, and it matters when comparing absolute scores across domains.
 
-Duplicates are removed on normalised text across all splits and all three datasets, so a review that appears in two datasets is kept once. Screening covers exact matches only. Amazon Polarity spans many product categories, including films and books, so some vocabulary overlap with IMDb survives the screening.
+Stage 3 removes exact duplicates on normalised text across all splits and all three datasets, so a review that appears in two datasets is kept once. Amazon Polarity spans many product categories, including films and books, so some vocabulary overlap with IMDb survives that step.
 
 A second pass looked for near-duplicates that exact matching would miss. It builds an eight-shingle signature for each of the 90,000 pooled reviews, verifies candidate pairs with an exact Jaccard score on word 5-grams, and flags pairs at 0.8 or above. It found 11 pairs in total, 0 across datasets and 0 between the train and test split of the same domain. Near-duplicate leakage is therefore negligible at this scale, and no further rows were removed.
 
@@ -171,6 +171,20 @@ The cross-domain losses of 0.04 to 0.10 are several times larger than the spread
 Positive vocabulary transfers. Eleven or twelve of the twenty strongest positive terms are shared by every pair of domains, and they are plain sentiment adjectives: great, best, love, excellent, amazing, perfect. Negative vocabulary overlaps less, between nine and twelve terms, and the strongest negative features differ in kind. IMDb's are sentiment words (awful, boring, waste), while Yelp's and Amazon's include negation markers such as not, no and don among their top negative features.
 
 That difference matters for transfer. A model that has learned to read negation as the main negative signal will misfire when the target domain expresses negativity through adjectives instead, and the reverse also holds. It also explains why negation and contrast dominate the error categories in section 5.
+
+### 4.7 Does more in-domain data close the gap?
+
+| IMDb training rows   |   Amazon |   IMDb |   Yelp |
+|:---------------------|---------:|-------:|-------:|
+| 5k                   |    0.893 |  0.893 |  0.901 |
+| 10k                  |    0.896 |  0.894 |  0.902 |
+| 20k                  |    0.88  |  0.902 |  0.902 |
+
+![Data scaling](figures/fig_data_scaling.png)
+
+Quadrupling the IMDb training set moves within-domain macro-F1 from 0.893 to 0.902, a gain of +0.009. On Amazon the same change gives -0.013, and on Yelp +0.001. Within-domain performance improves while cross-domain performance stays flat or falls, so the gap between domains widens with more data rather than closing. The Amazon fall is inside the seed-to-seed spread from 4.5, so the safe reading is that extra in-domain data does not buy cross-domain performance at this scale.
+
+That rules out data scarcity as the main explanation for the transfer loss. The problem is the mismatch in vocabulary and review length, and adding more IMDb reviews does not fix it.
 
 ## 5. Error analysis
 

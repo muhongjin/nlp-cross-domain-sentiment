@@ -121,6 +121,8 @@ Extra analysis inside Stage 3, 10 and 11:
 | `src/near_duplicates.py` | near-duplicate screening over all 90,000 pooled reviews | `results/near_duplicates.json` |
 | `src/domain_distance.py` | Jensen-Shannon divergence and vocabulary overlap between domains | `results/domain_distance.csv`, `figures/fig_domain_distance.png` |
 | `src/run_seeds.py` | multi-seed robustness for the DistilBERT within-domain runs | `results/seed_robustness.csv` |
+| `src/feature_analysis.py` | strongest positive and negative terms per domain, and their overlap | `results/top_features.csv`, `results/feature_overlap.csv` |
+| `src/data_scaling.py` | DistilBERT trained on 5k, 10k and 20k IMDb rows, tested on all three domains | `results/data_scaling.csv`, `figures/fig_data_scaling.png` |
 
 ### Results so far
 

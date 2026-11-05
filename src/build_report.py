@@ -54,6 +54,7 @@ def main():
     errors = load("error_cases.csv")
     distance = load("domain_distance.csv")
     features = load("feature_overlap.csv")
+    scaling = load("data_scaling.csv")
     seeds = load("seed_robustness.csv")
     near_path = os.path.join(RESULTS, "near_duplicates.json")
     near = None
@@ -154,10 +155,10 @@ def main():
     )
     add("")
     add(
-        "Duplicates are removed on normalised text across all splits and all three datasets, so a "
-        "review that appears in two datasets is kept once. Screening covers exact matches only. "
-        "Amazon Polarity spans many product categories, including films and books, so some "
-        "vocabulary overlap with IMDb survives the screening."
+        "Stage 3 removes exact duplicates on normalised text across all splits and all three "
+        "datasets, so a review that appears in two datasets is kept once. Amazon Polarity spans "
+        "many product categories, including films and books, so some vocabulary overlap with IMDb "
+        "survives that step."
     )
     add("")
     if near is not None:
@@ -394,6 +395,40 @@ def main():
             "negation and contrast dominate the error categories in section 5."
         )
     add("")
+    add("### 4.7 Does more in-domain data close the gap?")
+    add("")
+    if scaling is not None and not scaling.empty:
+        table = scaling.pivot_table(index="train_rows", columns="target", values="macro_f1")
+        table = table.reindex(["5k", "10k", "20k"])
+        table.columns = [DOMAIN_LABEL[c] for c in table.columns]
+        table = table.reset_index().rename(columns={"train_rows": "IMDb training rows"})
+        add(md(table.round(3), index=False))
+        add("")
+        add("![Data scaling](figures/fig_data_scaling.png)")
+        add("")
+        small = table[table["IMDb training rows"] == "5k"].iloc[0]
+        large = table[table["IMDb training rows"] == "20k"].iloc[0]
+        add(
+            f"Quadrupling the IMDb training set moves within-domain macro-F1 from "
+            f"{small['IMDb']:.3f} to {large['IMDb']:.3f}, a gain of "
+            f"{large['IMDb'] - small['IMDb']:+.3f}. On Amazon the same change gives "
+            f"{large['Amazon'] - small['Amazon']:+.3f}, and on Yelp "
+            f"{large['Yelp'] - small['Yelp']:+.3f}. Within-domain performance improves while "
+            f"cross-domain performance stays flat or falls, so the gap between domains widens "
+            f"with more data rather than closing. The Amazon fall is inside the seed-to-seed "
+            f"spread from 4.5, so the safe reading is that extra in-domain data does not buy "
+            f"cross-domain performance at this scale."
+        )
+        add("")
+        add(
+            "That rules out data scarcity as the main explanation for the transfer loss. The "
+            "problem is the mismatch in vocabulary and review length, and adding more IMDb "
+            "reviews does not fix it."
+        )
+    else:
+        add("The data-scaling runs were not available when this report was generated.")
+    add("")
+
     add("## 5. Error analysis")
     add("")
     add(
