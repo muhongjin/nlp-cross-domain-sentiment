@@ -95,7 +95,7 @@ scripts/      helper shell scripts
 
 ## 7. Progress
 
-Last updated: 2026-11-05 13:05 SGT.
+Last updated: 2026-11-05 13:40 SGT.
 
 | Stage | Description | Script | Output | Status |
 |---|---|---|---|---|
@@ -110,9 +110,17 @@ Last updated: 2026-11-05 13:05 SGT.
 | 9 | Mixed-domain experiment | `src/run_mixed.py` | `results/mixed_domain.csv` | done |
 | 10 | Evaluate and visualise | `src/evaluate.py`, `src/visualize.py` | `results/tables/`, `figures/` | done |
 | 11 | Analyse errors | `src/error_analysis.py` | `results/error_analysis.md`, `results/error_taxonomy.csv` | done |
-| 12 | Streamlit demonstration | `app/streamlit_app.py` | demo | code written, needs a manual check |
+| 12 | Streamlit demonstration | n/a | n/a | out of scope for this run |
 | 13 | Presentation and video | n/a | slides, video | pending |
 | 14 | Package the submission | n/a | reflection, GAI declaration | pending |
+
+Extra analysis inside Stage 3, 10 and 11:
+
+| Script | Purpose | Output |
+|---|---|---|
+| `src/near_duplicates.py` | near-duplicate screening over all 90,000 pooled reviews | `results/near_duplicates.json` |
+| `src/domain_distance.py` | Jensen-Shannon divergence and vocabulary overlap between domains | `results/domain_distance.csv`, `figures/fig_domain_distance.png` |
+| `src/run_seeds.py` | multi-seed robustness for the DistilBERT within-domain runs | `results/seed_robustness.csv` |
 
 ### Results so far
 
@@ -130,7 +138,6 @@ Full write-up: `REPORT.md`. Figures: `figures/`.
 
 ### Remaining work
 
-- Check the Streamlit demo runs against the saved checkpoints.
 - Record the 10 minute video and build the slides.
 - Sign the group reflection document and the GAI declaration.
 - Delete the checkpoints from the server after the demo, per the disk rule.
@@ -139,7 +146,9 @@ Full write-up: `REPORT.md`. Figures: `figures/`.
 
 - IMDb has only 25,000 training reviews, so it caps the training size for every domain at 20,000.
 - Yelp labels 3 to 4 stars as positive and drops 5-star reviews. Its positive class is weaker than the other two, which is a known confound.
-- Amazon Polarity spans many product categories including Movies and TV, so part of its vocabulary overlaps with IMDb. Exact duplicate screening runs across datasets; near-duplicate screening does not.
+- Amazon Polarity spans many product categories including Movies and TV, so part of its vocabulary overlaps with IMDb. Exact duplicates are removed. Near-duplicate screening over all 90,000 pooled reviews found 11 pairs, all inside IMDb, with none across datasets and none between train and test.
 - GPU 0 is used by another account. Every training command sets `CUDA_VISIBLE_DEVICES` to 1 or 2.
 - transformers 4.46.3 is pinned because newer releases need torch 2.6 or later and the server has torch 2.5.1.
 - The DistilBERT learning rate tuning produced two runs that scored the same to four decimals (0.9090 on IMDb validation). The script picked 2e-5 and every domain model uses it.
+- Vocabulary distance does not predict the transfer loss. IMDb and Amazon are the closest pair by Jensen-Shannon divergence (0.146) and still lose 0.022 to 0.039 macro-F1 between them. Target review length tracks the loss better.
+- Stage 12 and later are outside the scope of this run. The work stops at Stage 11 plus the written report.

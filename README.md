@@ -37,6 +37,17 @@ loses 0.097 macro-F1 on IMDb, while an IMDb-trained model loses 0.000 on Yelp. M
 training changed scores by less than 0.02 macro-F1 either way, and every gain landed on the
 Amazon target.
 
+Two extra checks support the numbers. Near-duplicate screening over all 90,000 pooled
+reviews found 11 near-duplicate pairs, none across datasets and none between a train and
+test split, so the comparison is not inflated by leakage. Retraining DistilBERT with two
+additional seeds keeps the within-domain scores within 0.005 macro-F1, which is small next
+to the cross-domain gaps.
+
+Vocabulary distance between domains does not explain the losses. IMDb and Amazon have the
+lowest Jensen-Shannon divergence (0.146) yet still cost each other 0.022 to 0.039 macro-F1.
+Review length tracks the drop more closely: IMDb averages 229 words, Yelp 133 and Amazon 74,
+and the short-domain models suffer most when IMDb is the target.
+
 ## Datasets
 
 | Dataset | Domain | Train | Test | Positive class | Licence |
@@ -83,9 +94,10 @@ src/
   evaluate.py           Stage 10 result tables
   visualize.py          Stage 10 figures
   error_analysis.py     Stage 11 error taxonomy
+  domain_distance.py    vocabulary and length distance between domains
+  near_duplicates.py    near-duplicate screening over the pooled corpus
+  run_seeds.py          multi-seed robustness summary
   build_report.py       assemble REPORT.md from the result files
-app/
-  streamlit_app.py      Stage 12 interactive demo
 scripts/
   setup_env.sh          recreate the conda environment
   run_all.sh            reproduce every stage in order
@@ -118,14 +130,6 @@ bash scripts/run_all.sh
 The full run takes about 45 minutes on a single RTX 3090: six DistilBERT fine-tunes plus
 two learning-rate tuning runs, with everything else taking seconds.
 
-## Demo
-
-```bash
-streamlit run app/streamlit_app.py
-```
-
-Forward the port over SSH to open it locally.
-
 ## Figures
 
 | Figure | What it shows |
@@ -136,6 +140,8 @@ Forward the port over SSH to open it locally.
 | `figures/fig_within_vs_cross.png` | average within-domain against cross-domain score |
 | `figures/fig_mixed_vs_single.png` | mixed-domain against the best single source |
 | `figures/fig_confusion_matrices.png` | DistilBERT cross-domain confusion matrices |
+| `figures/fig_per_class_recall.png` | DistilBERT recall on positive and negative reviews |
+| `figures/fig_domain_distance.png` | Jensen-Shannon divergence between the three domains |
 | `figures/fig_length_distribution.png` | review length by domain |
 
 ## Group contributions

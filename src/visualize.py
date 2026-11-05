@@ -58,7 +58,7 @@ def fig_cross_heatmap():
     within = pd.read_csv(os.path.join(RESULTS, "within_domain.csv"))
 
     fig, axes = plt.subplots(1, 3, figsize=(15, 4.2))
-    for ax, model in zip(axes, MODELS):
+    for idx, (ax, model) in enumerate(zip(axes, MODELS)):
         mat = np.full((3, 3), np.nan)
         for i, s in enumerate(DOMAINS):
             for j, t in enumerate(DOMAINS):
@@ -76,7 +76,8 @@ def fig_cross_heatmap():
         ax.set_xticklabels([DOMAIN_SHORT[d] for d in DOMAINS])
         ax.set_yticklabels([DOMAIN_SHORT[d] for d in DOMAINS])
         ax.set_xlabel("test domain")
-        ax.set_ylabel("training domain")
+        if idx == 0:
+            ax.set_ylabel("training domain")
         ax.set_title(model)
         for i in range(3):
             for j in range(3):
@@ -204,6 +205,52 @@ def fig_lengths():
     save(fig, "fig_length_distribution.png")
 
 
+def fig_per_class():
+    """Positive-class recall for DistilBERT by target domain and source domain."""
+    path = os.path.join(RESULTS, "cross_metrics.json")
+    if not os.path.exists(path):
+        return
+    metrics = read_json(path)
+    rows = []
+    for key, met in metrics.items():
+        if not key.startswith("distilbert_"):
+            continue
+        source, target = key.replace("distilbert_", "").split("_to_")
+        rows.append(
+            {
+                "source": source,
+                "target": target,
+                "positive_recall": met["per_class"]["positive"]["recall"],
+                "negative_recall": met["per_class"]["negative"]["recall"],
+            }
+        )
+    if not rows:
+        return
+    df = pd.DataFrame(rows)
+    fig, axes = plt.subplots(1, 2, figsize=(11, 4), sharey=True)
+    for ax, column, title in (
+        (axes[0], "positive_recall", "Recall on positive reviews"),
+        (axes[1], "negative_recall", "Recall on negative reviews"),
+    ):
+        xs = np.arange(len(DOMAINS))
+        width = 0.35
+        for i, source in enumerate(["imdb", "yelp", "amazon"]):
+            vals = []
+            for target in DOMAINS:
+                row = df[(df.source == source) & (df.target == target)]
+                vals.append(row[column].iloc[0] if not row.empty else np.nan)
+            ax.bar(xs + (i - 1) * width, vals, width, label=f"trained on {DOMAIN_SHORT[source]}")
+        ax.set_xticks(xs)
+        ax.set_xticklabels([DOMAIN_SHORT[d] for d in DOMAINS])
+        ax.set_title(title)
+        ax.set_ylim(0, 1.0)
+        ax.set_xlabel("test domain")
+    axes[0].set_ylabel("recall")
+    axes[0].legend(fontsize=7)
+    fig.suptitle("DistilBERT recall by class and domain")
+    save(fig, "fig_per_class_recall.png")
+
+
 def main():
     ensure_dirs()
     fig_within()
@@ -211,6 +258,7 @@ def main():
     fig_within_vs_cross()
     fig_mixed()
     fig_confusion()
+    fig_per_class()
     fig_lengths()
 
 

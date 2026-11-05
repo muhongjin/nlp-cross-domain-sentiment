@@ -52,6 +52,15 @@ def main():
     mixed = load("mixed_domain.csv")
     stats = load("data_stats.csv")
     errors = load("error_cases.csv")
+    distance = load("domain_distance.csv")
+    seeds = load("seed_robustness.csv")
+    near_path = os.path.join(RESULTS, "near_duplicates.json")
+    near = None
+    if os.path.exists(near_path):
+        import json
+
+        with open(near_path, "r", encoding="utf-8") as f:
+            near = json.load(f)
 
     parts = []
     add = parts.append
@@ -87,9 +96,9 @@ def main():
             f"{best_within} reached the highest average macro-F1 at {within_avg[best_within]:.3f}. "
             f"Crossing a domain boundary cost the TF-IDF models about {drops[biggest]:.3f} macro-F1 "
             f"and DistilBERT about {drops[smallest]:.3f}, so the transformer degraded more gently "
-            f"even though it started higher. Mixed-domain training changed the result by less than "
-            f"0.02 macro-F1 in either direction, and it helped only when the target was the product "
-            f"domain."
+            f"even though it started higher. Mixed-domain training changed the result by no more "
+            f"than 0.022 macro-F1 in either direction, and it helped only when the target was the "
+            f"product domain."
         )
     add("")
 
@@ -150,6 +159,20 @@ def main():
         "vocabulary overlap with IMDb survives the screening."
     )
     add("")
+    if near is not None:
+        buckets = near.get("buckets", {})
+        cross_pairs = buckets.get("cross_domain", 0)
+        leak_pairs = sum(v for k, v in buckets.items() if "train_test_leak" in k)
+        add(
+            f"A second pass looked for near-duplicates that exact matching would miss. It builds "
+            f"an eight-shingle signature for each of the {near['pooled_reviews']:,} pooled reviews, "
+            f"verifies candidate pairs with an exact Jaccard score on word 5-grams, and flags pairs "
+            f"at 0.8 or above. It found {near['near_duplicate_pairs']} pairs in total, "
+            f"{cross_pairs} across datasets and {leak_pairs} between the train and test split of "
+            f"the same domain. Near-duplicate leakage is therefore negligible at this scale, and no "
+            f"further rows were removed."
+        )
+        add("")
     add(
         "Two data artefacts survived cleaning and show up in the error analysis. IMDb reviews "
         "carry HTML line-break tags in the source text, and Amazon Polarity contains a small number "
@@ -255,7 +278,34 @@ def main():
             )
         add("")
 
-    add("### 4.3 Mixed-domain")
+    add("### 4.3 How far apart are the domains?")
+    add("")
+    if distance is not None:
+        table = distance.copy()
+        table["pair"] = table["domain_a"].map(DOMAIN_LABEL) + " and " + table["domain_b"].map(DOMAIN_LABEL)
+        table = table[["pair", "js_divergence", "top5000_jaccard", "mean_words_a", "mean_words_b"]]
+        table.columns = ["domain pair", "Jensen-Shannon divergence", "top 5000 word overlap", "mean words (first)", "mean words (second)"]
+        add(md(table, index=False))
+        add("")
+        add("![Domain distance](figures/fig_domain_distance.png)")
+        add("")
+        add(
+            "Vocabulary distance does not line up with the size of the transfer loss. IMDb and "
+            "Amazon have the lowest divergence at 0.146, partly because Amazon reviews cover films "
+            "and books, yet moving between them still costs DistilBERT 0.022 to 0.039 macro-F1. "
+            "IMDb and Yelp are the most distant pair at 0.225, and one direction of that transfer "
+            "costs nothing at all."
+        )
+        add("")
+        add(
+            "Target length tracks the drop better than vocabulary distance does. IMDb averages 229 "
+            "words, Yelp 133 and Amazon 74, and the models trained on the two short domains lose "
+            "most when IMDb is the target (0.039 and 0.097 macro-F1). The mismatch between how "
+            "much text a model expects and how much it gets matters more than which words appear."
+        )
+        add("")
+
+    add("### 4.4 Mixed-domain")
     add("")
     if mixed is not None:
         table = mixed.copy()
@@ -280,12 +330,33 @@ def main():
         )
         add("")
         add(
-            "That pattern makes sense given the cross-domain results. Amazon is the domain that "
-            "loses most from single-source training, so it has the most room to gain from a wider "
-            "vocabulary. IMDb and Yelp are already served well by one strong source, and halving "
-            "each source to 10,000 rows costs more than the added diversity returns."
+            "The pattern is less obvious than it first looks. IMDb is the hardest target in the "
+            "cross-domain table, yet mixed-domain training does not help there. Amazon gains "
+            "because it is the most heterogeneous domain: product reviews span books, music, "
+            "electronics and films, so a second source adds vocabulary instead of noise. IMDb's "
+            "difficulty comes from long text and mixed tone, and a wider vocabulary does not fix "
+            "either."
         )
         add("")
+
+    add("### 4.5 Robustness across seeds")
+    add("")
+    if seeds is not None:
+        table = seeds.copy()
+        table.columns = ["domain", "seeds", "runs", "mean test macro-F1", "std", "min", "max"]
+        add(md(table, index=False))
+        add("")
+        spread = seeds["test_macro_f1_std"].max()
+        add(
+            f"DistilBERT was retrained on each domain with two extra seeds to check that the "
+            f"ranking is not an accident of one initialisation. The standard deviation across the "
+            f"three runs is at most {spread:.4f} macro-F1, which is small next to the 0.02 to 0.10 "
+            f"gaps in the cross-domain table. The within-domain ordering and the size of the "
+            f"transfer losses are stable."
+        )
+    else:
+        add("Seed runs were not available when this report was generated.")
+    add("")
 
     add("## 5. Error analysis")
     add("")
@@ -325,6 +396,14 @@ def main():
             "The opposite happens with a Yelp-trained model on IMDb. It calls 98 positive film "
             "reviews negative against 22 the other way, because long emotional prose looks like a "
             "rant to a classifier that learned short, blunt Yelp complaints."
+        )
+        add("")
+        add("![Recall by class and domain](figures/fig_per_class_recall.png)")
+        add("")
+        add(
+            "The recall plot makes the same point per class. Positive recall stays high for every "
+            "source when the target is Yelp or Amazon, and collapses only on IMDb. Negative recall "
+            "is the fragile one for models trained on IMDb and asked to read Amazon."
         )
     add("")
     add(
@@ -394,7 +473,7 @@ def main():
         "The direction of transfer matters more than the size of the training set. A model trained "
         "on long, nuanced film reviews handled short product and service reviews well. A model "
         "trained on short verdicts struggled with film reviews. Mixed-domain training at a fixed "
-        "budget gave small and uneven gains, concentrated on the domain that needed help most."
+        "budget gave small and uneven gains, concentrated on Amazon, the most heterogeneous domain."
     )
     add("")
     add(

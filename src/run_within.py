@@ -47,6 +47,8 @@ def main():
             continue
         if str(res.get("tag", "")).startswith("tune_"):
             continue
+        if str(res.get("tag", "")).startswith("seed"):
+            continue
         domain = res["test_domain"]
         rows.append(
             {

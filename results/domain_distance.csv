@@ -1,0 +1,4 @@
+domain_a,domain_b,js_divergence,top5000_jaccard,mean_words_a,mean_words_b
+imdb,yelp,0.2248,0.3459,228.8,133.1
+imdb,amazon,0.1455,0.5142,228.8,74.3
+yelp,amazon,0.1785,0.4128,133.1,74.3

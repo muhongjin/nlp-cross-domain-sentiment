@@ -65,6 +65,7 @@ def main():
     parser.add_argument("--max_len", type=int, default=MAX_LEN)
     parser.add_argument("--tag", default="")
     parser.add_argument("--val_per_domain", type=int, default=1000)
+    parser.add_argument("--seed", type=int, default=SEED)
     args = parser.parse_args()
 
     train_domains = [d.strip() for d in args.train_domains.split(",") if d.strip()]
@@ -73,7 +74,7 @@ def main():
     tag = args.tag or ("_".join(train_domains) if is_mixed else train_domains[0])
 
     ensure_dirs()
-    set_seed()
+    set_seed(args.seed)
     device = "cuda" if torch.cuda.is_available() else "cpu"
     print(f"device={device} train={train_domains} test={test_domain}")
 
@@ -125,7 +126,7 @@ def main():
         greater_is_better=True,
         fp16=torch.cuda.is_available(),
         report_to="none",
-        seed=SEED,
+        seed=args.seed,
         dataloader_num_workers=2,
     )
     train_kwargs[eval_key] = "epoch"
@@ -156,6 +157,7 @@ def main():
         "test_domain": test_domain,
         "setting": "mixed" if is_mixed else "within",
         "tag": tag,
+        "seed": args.seed,
         "lr": args.lr,
         "epochs": args.epochs,
         "batch_size": args.batch_size,

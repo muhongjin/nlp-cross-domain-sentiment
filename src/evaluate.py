@@ -55,6 +55,32 @@ def main():
         m.to_csv(os.path.join(TABLES, "mixed_domain.csv"), index=False)
         lines += ["## Mixed-domain results", "", markdown_table(m), ""]
 
+    metrics_path = os.path.join(RESULTS, "cross_metrics.json")
+    if os.path.exists(metrics_path):
+        import json
+
+        with open(metrics_path, "r", encoding="utf-8") as f:
+            metrics = json.load(f)
+        rows = []
+        for key, met in sorted(metrics.items()):
+            if not key.startswith("distilbert_"):
+                continue
+            source, target = key.replace("distilbert_", "").split("_to_")
+            rows.append(
+                {
+                    "source": source,
+                    "target": target,
+                    "positive_precision": round(met["per_class"]["positive"]["precision"], 4),
+                    "positive_recall": round(met["per_class"]["positive"]["recall"], 4),
+                    "negative_precision": round(met["per_class"]["negative"]["precision"], 4),
+                    "negative_recall": round(met["per_class"]["negative"]["recall"], 4),
+                }
+            )
+        if rows:
+            table = pd.DataFrame(rows)
+            table.to_csv(os.path.join(TABLES, "per_class_distilbert.csv"), index=False)
+            lines += ["## Per-class metrics, DistilBERT cross-domain", "", markdown_table(table), ""]
+
     with open(os.path.join(TABLES, "results.md"), "w", encoding="utf-8") as f:
         f.write("\n".join(lines) + "\n")
     print(f"wrote {TABLES}/results.md")

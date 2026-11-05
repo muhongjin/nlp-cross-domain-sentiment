@@ -1,0 +1,112 @@
+{
+  "pooled_reviews": 90000,
+  "candidate_pairs": 57999,
+  "near_duplicate_pairs": 11,
+  "jaccard_threshold": 0.8,
+  "signature_size": 8,
+  "buckets": {
+    "imdb_within_test": 5,
+    "imdb_within_train": 6
+  },
+  "examples": [
+    {
+      "domain_a": "imdb",
+      "split_a": "train",
+      "domain_b": "imdb",
+      "split_b": "train",
+      "jaccard": 0.962,
+      "text_a": "In a college dorm a guy is killed by somebody with a scythe. His girlfriend Beth (Dorie Barton) discovers him and tries to commit suicide. She's institutionalized. A year later she's out, has a new bo",
+      "text_b": "In a college dorm a guy is killed by somebody with a scythe. His girlfriend Beth (Dorie Barton) discovers him and tries to commit suicide. She's institutionalized. A year later she's out, has a new bo"
+    },
+    {
+      "domain_a": "imdb",
+      "split_a": "test",
+      "domain_b": "imdb",
+      "split_b": "test",
+      "jaccard": 0.942,
+      "text_a": "Ah yet another Seagal movie.In no less than a few mere months arrive to populate the video store shelves.As bad as Submerged?No.But that is not saying much.Like perfume on a pig.<br /><br />Seagal is ",
+      "text_b": "Ah yet another Seagal movie.In no less than a few mere months arrive to populate the video store shelves.As bad as Submerged?No.But that is not saying much.Like perfume on a pig.<br /><br />Seagal is "
+    },
+    {
+      "domain_a": "imdb",
+      "split_a": "train",
+      "domain_b": "imdb",
+      "split_b": "train",
+      "jaccard": 0.935,
+      "text_a": "Kurt Russell is at his best as the man who lives off his past glories, Reno Hightower. Robin Williams is his polar opposite in a rare low key performance as Jack Dundee. He dropped the Big Pass in mor",
+      "text_b": "Kurt Russell is at his best as the man who lives off his past glories, Reno Hightower. Robin Williams is his polar opposite in a rare low key performance as Jack Dundee. He dropped the Big Pass in mor"
+    },
+    {
+      "domain_a": "imdb",
+      "split_a": "train",
+      "domain_b": "imdb",
+      "split_b": "train",
+      "jaccard": 0.924,
+      "text_a": "This is the only full length feature film about the world of bridge. I found the first 10 minutes a bit slow, but after that, the movie is absolutely perfect in describing professional bridge players ",
+      "text_b": "This is the only full length feature film about the world of bridge. I found the first 10 minutes a bit slow, but after that, the movie is absolutely perfect in describing professional bridge players "
+    },
+    {
+      "domain_a": "imdb",
+      "split_a": "test",
+      "domain_b": "imdb",
+      "split_b": "test",
+      "jaccard": 0.91,
+      "text_a": "This film easily rivals the emotional strength, the dramatic impact and the top-notch performances of \"12 Angry Men\". I rented it on a whim and was amazed that I had not heard of it before.<br /><br /",
+      "text_b": "This film easily rivals the emotional strength, the dramatic impact and the top-notch performances of \"12 Angry Men\". I rented it on a whim and was amazed that I had not heard of it before.<br /><br /"
+    },
+    {
+      "domain_a": "imdb",
+      "split_a": "test",
+      "domain_b": "imdb",
+      "split_b": "test",
+      "jaccard": 0.903,
+      "text_a": "This movie had reminded me of watching the old black and white movies with my dad. More true to life characters looking for love, being in love, and loosing it. Old story fresh view. Larenz Tate was s",
+      "text_b": "A Must See!<br /><br />Excellent positive African-American Love Story. This movie had reminded me of watching the old black and white movies with my dad. More true to life characters looking for love,"
+    },
+    {
+      "domain_a": "imdb",
+      "split_a": "train",
+      "domain_b": "imdb",
+      "split_b": "train",
+      "jaccard": 0.902,
+      "text_a": "Saw this in the theater in '86 and fell out of my chair laughing more than once. \"Beirut\"...\"What do you know about Beirut?\"...\"Beirut...he's the best damn baseball that ever lived.\"<br /><br />You kn",
+      "text_b": "Saw this in the theater in '86 and fell out of my chair laughing more than once. \"Beirut\"...\"What do you know about Beirut?\"...\"Beirut...he's the best damn baseball player who ever lived.\"<br /><br />"
+    },
+    {
+      "domain_a": "imdb",
+      "split_a": "test",
+      "domain_b": "imdb",
+      "split_b": "test",
+      "jaccard": 0.858,
+      "text_a": "This is yet another pseudo-intellectual \"let's make the Nazis look real bad\" movie. The Nazis were pretty bad, no doubt - most of already know that. However, that does not necessarily make every movie",
+      "text_b": "This is yet another pseudo-intellectual \"let's make the Nazis look real bad\" movie. The Nazis were pretty bad, no doubt - most of already know that. However, that does not necessarily make every movie"
+    },
+    {
+      "domain_a": "imdb",
+      "split_a": "train",
+      "domain_b": "imdb",
+      "split_b": "train",
+      "jaccard": 0.826,
+      "text_a": "I think this is almost all I need to say. I feel obliged to explain my actions though. I've basically never seen such an armateur production, and I mean that in all senses of the word. Although the ph",
+      "text_b": "I think this is almost all I need to say. I feel obliged to explain my actions though. I've basically never seen such an armature production, and I mean that in all senses of the word. Although he phy"
+    },
+    {
+      "domain_a": "imdb",
+      "split_a": "test",
+      "domain_b": "imdb",
+      "split_b": "test",
+      "jaccard": 0.813,
+      "text_a": "The monster will look very familiar to you. So will the rest of the film, if you've seen a half-dozen of these teenagers-trapped-in-the-woods movies. Okay, so they're not teenagers, this time, but the",
+      "text_b": "The monster will look very familiar to you. So will the rest of the film, if you've seen a half-dozen of these teenagers-trapped-in-the-woods movies. Okay, so they're not teenagers, this time, but the"
+    },
+    {
+      "domain_a": "imdb",
+      "split_a": "train",
+      "domain_b": "imdb",
+      "split_b": "train",
+      "jaccard": 0.806,
+      "text_a": "<br /><br />I have to admit to enjoying bad movies. I love them I watch all of them. Horror especially. My friends and I all gather after a hard week at school and work, rent some crazy tapes, order a",
+      "text_b": "I have to admit to enjoying bad movies. I love them I watch all of them. Horror especially. My friends and I all gather after a hard week at school and work, rent some crazy tapes, order a pizza and h"
+    }
+  ]
+}

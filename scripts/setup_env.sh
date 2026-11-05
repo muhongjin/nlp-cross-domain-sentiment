@@ -19,7 +19,7 @@ conda activate nlp
 python -m pip install --upgrade pip -q
 python -m pip install torch==2.5.1 --index-url https://download.pytorch.org/whl/cu121 -q
 python -m pip install transformers==4.46.3 datasets==3.2.0 huggingface-hub==0.36.2 -q
-python -m pip install accelerate scikit-learn pandas pyarrow numpy matplotlib seaborn tqdm pyyaml -q
+python -m pip install accelerate scikit-learn pandas pyarrow numpy matplotlib seaborn tqdm pyyaml streamlit tabulate -q
 
 python - <<'PY'
 import torch, transformers, datasets

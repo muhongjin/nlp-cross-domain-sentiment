@@ -71,3 +71,14 @@
 | mixed     | TF-IDF + SVM | yelp+amazon     | imdb     |        20000 |     0.8532 |     0.8531 |                  0.8642 |                -0.0111 |
 | mixed     | TF-IDF + SVM | imdb+amazon     | yelp     |        20000 |     0.8793 |     0.8793 |                  0.8882 |                -0.0089 |
 
+## Per-class metrics, DistilBERT cross-domain
+
+| source   | target   |   positive_precision |   positive_recall |   negative_precision |   negative_recall |
+|:---------|:---------|---------------------:|------------------:|---------------------:|------------------:|
+| amazon   | imdb     |               0.8958 |            0.875  |               0.8778 |            0.8982 |
+| amazon   | yelp     |               0.9253 |            0.9244 |               0.9245 |            0.9254 |
+| imdb     | amazon   |               0.8338 |            0.9504 |               0.9423 |            0.8106 |
+| imdb     | yelp     |               0.8783 |            0.9324 |               0.928  |            0.8708 |
+| yelp     | amazon   |               0.9184 |            0.8912 |               0.8943 |            0.9208 |
+| yelp     | imdb     |               0.9215 |            0.77   |               0.8025 |            0.9344 |
+
