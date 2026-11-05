@@ -600,7 +600,9 @@ def main():
     add("| Data only | `python src/prepare_data.py` |")
     add("")
     add("Seed 42 is fixed for sampling, splitting and training. Hyperparameters live in "
-        "`configs/final.yaml`. Every training run writes a JSON record with its settings and metrics.")
+        "`configs/final.yaml`. Every training run writes a JSON record with its settings and metrics. "
+        "All runs used a single RTX 3090 with CUDA 12.2; one DistilBERT fine-tune takes four to "
+        "six minutes at this size.")
     add("")
     add(
         "The data step is deterministic. Running `src/prepare_data.py` a second time regenerated "

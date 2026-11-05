@@ -266,7 +266,7 @@ The practical recommendation for a business is to test a reused model on a sampl
 | Everything | `bash scripts/run_all.sh` |
 | Data only | `python src/prepare_data.py` |
 
-Seed 42 is fixed for sampling, splitting and training. Hyperparameters live in `configs/final.yaml`. Every training run writes a JSON record with its settings and metrics.
+Seed 42 is fixed for sampling, splitting and training. Hyperparameters live in `configs/final.yaml`. Every training run writes a JSON record with its settings and metrics. All runs used a single RTX 3090 with CUDA 12.2; one DistilBERT fine-tune takes four to six minutes at this size.
 
 The data step is deterministic. Running `src/prepare_data.py` a second time regenerated all nine parquet files with identical md5 checksums, so a teammate who clones the repository and reruns the script gets the same splits. Re-running `src/baselines.py` reproduced the within-domain table to six decimals.
 
