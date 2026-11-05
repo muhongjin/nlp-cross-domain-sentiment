@@ -95,7 +95,11 @@ scripts/      helper shell scripts
 
 ## 7. Progress
 
-Last updated: 2026-11-05 14:00 SGT.
+Last updated: 2026-11-05 14:40 SGT.
+
+**Status: stages 3 to 11 are complete and pushed.** The repository holds 19 commits, 98
+tracked files, 11 figures and the full result set. `REPORT.md` is the written deliverable.
+Stage 12 and later were explicitly out of scope for this run.
 
 | Stage | Description | Script | Output | Status |
 |---|---|---|---|---|
