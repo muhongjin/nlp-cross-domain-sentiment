@@ -12,6 +12,7 @@ import time
 import joblib
 import numpy as np
 import pandas as pd
+import yaml
 from sklearn.dummy import DummyClassifier
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
@@ -20,6 +21,7 @@ from sklearn.svm import LinearSVC
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from common import (  # noqa: E402
+    CONFIGS,
     DOMAINS,
     MODELS,
     RESULTS,
@@ -30,6 +32,25 @@ from common import (  # noqa: E402
     set_seed,
     write_json,
 )
+
+
+def load_tuned_params():
+    """Read the per-domain best TF-IDF settings chosen in Stage 6, if available."""
+    path = os.path.join(CONFIGS, "final.yaml")
+    if not os.path.exists(path):
+        return {}
+    with open(path, "r", encoding="utf-8") as f:
+        cfg = yaml.safe_load(f)
+    tuned = {}
+    for row in cfg.get("tfidf", {}).get("best", []):
+        ngram = row.get("ngram_range", "(1, 2)")
+        if isinstance(ngram, str):
+            ngram = tuple(int(x) for x in ngram.strip("()").split(","))
+        tuned[(row["domain"], row["model"])] = {
+            "C": float(row["C"]),
+            "ngram_range": tuple(ngram),
+        }
+    return tuned
 
 
 def build_model(kind, params=None):
@@ -103,11 +124,14 @@ def train_and_evaluate(domain, kind, params=None, eval_splits=("val", "test")):
 def main():
     ensure_dirs()
     set_seed()
+    tuned = load_tuned_params()
     rows = []
 
     for domain in DOMAINS:
         for kind in ("majority", "tfidf_lr", "tfidf_svm"):
-            model, res = train_and_evaluate(domain, kind)
+            params = tuned.get((domain, kind))
+            model, res = train_and_evaluate(domain, kind, params)
+            res["params"] = params or {}
             path = os.path.join(MODELS, f"{kind}_{domain}.joblib")
             if kind != "majority":
                 joblib.dump(model, path)

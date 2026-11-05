@@ -1,0 +1,7 @@
+categories,count,mean_words,share
+contrast,1538,201.1,0.37
+negation,1507,200.0,0.363
+mixed opinion,536,264.4,0.129
+long review,287,486.6,0.069
+other,257,49.7,0.062
+very short review,31,8.3,0.007

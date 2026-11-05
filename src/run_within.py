@@ -45,6 +45,8 @@ def main():
         res = read_json(path)
         if res.get("setting") != "within":
             continue
+        if str(res.get("tag", "")).startswith("tune_"):
+            continue
         domain = res["test_domain"]
         rows.append(
             {

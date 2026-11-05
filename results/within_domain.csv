@@ -1,0 +1,13 @@
+setting,model,train_domain,test_domain,accuracy,macro_f1,val_macro_f1
+within,Majority class,amazon,amazon,0.5,0.3333,0.3333
+within,Majority class,imdb,imdb,0.5,0.3333,0.3333
+within,Majority class,yelp,yelp,0.5,0.3333,0.3333
+within,TF-IDF + LR,amazon,amazon,0.8795,0.8795,0.8795
+within,TF-IDF + LR,imdb,imdb,0.8985,0.8985,0.894
+within,TF-IDF + LR,yelp,yelp,0.9247,0.9247,0.9295
+within,TF-IDF + SVM,amazon,amazon,0.8811,0.8811,0.891
+within,TF-IDF + SVM,imdb,imdb,0.8998,0.8998,0.9055
+within,TF-IDF + SVM,yelp,yelp,0.9324,0.9324,0.9335
+within,DistilBERT,amazon,amazon,0.9254,0.9254,0.931
+within,DistilBERT,imdb,imdb,0.9019,0.9018,0.91
+within,DistilBERT,yelp,yelp,0.9486,0.9486,0.945
