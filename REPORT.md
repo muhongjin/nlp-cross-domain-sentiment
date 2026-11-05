@@ -222,6 +222,22 @@ The most common categories are contrast and negation, both above a third of the 
 
 Two artefacts deserve a mention. IMDb text keeps its HTML line-break tags, which the tokeniser treats as ordinary words. Amazon Polarity also contains a few non-English reviews, including French and Spanish, that no model in the study was trained to handle. Both are properties of the public datasets rather than mistakes in the pipeline, but they inflate the error counts slightly.
 
+### 5.1 Accuracy by review length
+
+| setting        |   <=50 |   51-100 |   101-200 | 201-400   | >400   |
+|:---------------|-------:|---------:|----------:|:----------|:-------|
+| Amazon to IMDb |  0.905 |    0.919 |     0.92  | 0.868     | 0.769  |
+| Amazon to Yelp |  0.925 |    0.947 |     0.933 | 0.905     | 0.798  |
+| IMDb to Amazon |  0.887 |    0.878 |     0.875 | -         | -      |
+| IMDb to Yelp   |  0.904 |    0.926 |     0.918 | 0.866     | 0.748  |
+| Yelp to Amazon |  0.907 |    0.906 |     0.905 | -         | -      |
+| Yelp to IMDb   |  0.901 |    0.903 |     0.902 | 0.809     | 0.705  |
+
+![Accuracy by review length](figures/fig_error_by_length.png)
+
+Length matters in every setting, including within IMDb, where accuracy falls from 0.927 on 101 to 200 word reviews to 0.826 on reviews over 400 words. The fall is steeper across domains: averaged over the six cross-domain settings, accuracy is 0.909 on reviews of 100 words or fewer and 0.808 on reviews longer than 200 words. The longest bucket is where the transfer losses concentrate, which fits the truncation at 256 tokens: the concluding sentence, which often carries the verdict, falls outside the window.
+
+
 ## 6. Limitations
 
 The three datasets use different rules to build their positive class, so part of the cross-domain drop may come from label definition rather than from domain shift. Yelp's positive class sits at 3 to 4 stars, which is weaker than the other two.

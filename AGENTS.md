@@ -123,6 +123,7 @@ Extra analysis inside Stage 3, 10 and 11:
 | `src/run_seeds.py` | multi-seed robustness for the DistilBERT within-domain runs | `results/seed_robustness.csv` |
 | `src/feature_analysis.py` | strongest positive and negative terms per domain, and their overlap | `results/top_features.csv`, `results/feature_overlap.csv` |
 | `src/data_scaling.py` | DistilBERT trained on 5k, 10k and 20k IMDb rows, tested on all three domains | `results/data_scaling.csv`, `figures/fig_data_scaling.png` |
+| `src/error_by_length.py` | accuracy by review length for all DistilBERT settings | `results/error_by_length.csv`, `figures/fig_error_by_length.png` |
 
 ### Results so far
 
