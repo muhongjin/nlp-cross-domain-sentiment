@@ -1,6 +1,7 @@
 #!/bin/bash
 # Reproduce every stage in order on the GPU server.
 # Usage: bash scripts/run_all.sh
+# Runtime is about 90 minutes on one RTX 3090, dominated by the 14 DistilBERT fine-tunes.
 set -e
 cd "$(dirname "$0")/.."
 source "$HOME/miniconda3/etc/profile.d/conda.sh"
@@ -51,6 +52,8 @@ python src/data_scaling.py
 
 # Stage 11 extension: accuracy by review length.
 python src/error_by_length.py
+
+# Multi-seed robustness for the DistilBERT within-domain runs.
 for s in 43 44; do
   for d in imdb yelp amazon; do
     python src/train_transformer.py --train_domains "$d" --test_domain "$d" --lr "$LR" --seed "$s" --tag "seed${s}_${d}"
