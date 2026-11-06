@@ -1,12 +1,13 @@
-# ---- data (large, regenerable) ----
-data/raw/*
-!data/raw/.gitkeep
-data/processed/*
-!data/processed/.gitkeep
+# Generated data and checkpoints, recreated by src/prepare_data.py and the training scripts
+data/raw/
+data/processed/
+models/
 
-# ---- models / checkpoints ----
-models/*
-!models/.gitkeep
+# Run logs and per-setting error dumps
+results/logs/
+results/errors/
+
+# Model artefacts
 *.joblib
 *.pt
 *.pth
@@ -14,28 +15,21 @@ models/*
 *.safetensors
 *.ckpt
 
-# ---- python ----
+# Python
 __pycache__/
 *.py[cod]
 *.egg-info/
 .venv/
 venv/
 env/
-.ipynb_checkpoints/
 .pytest_cache/
 .ruff_cache/
 
-# ---- results: keep small tables, drop logs ----
-results/logs/
-*.log
-
-# ---- secrets ----
+# Secrets and editor files
 .env
 .env.*
 *.pem
 *.key
-
-# ---- os / editor ----
 .DS_Store
 Thumbs.db
 desktop.ini
