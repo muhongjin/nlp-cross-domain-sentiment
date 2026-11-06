@@ -1,4 +1,4 @@
-"""Stage 5 and 9: fine-tune DistilBERT on one or two domains and evaluate on a target domain.
+"""Fine-tune DistilBERT on one or two domains and evaluate on a target domain.
 
 Within-domain:
     python src/train_transformer.py --train_domains imdb --test_domain imdb
@@ -10,48 +10,46 @@ Validation always comes from the training domains, so the target domain never in
 hyperparameter choice.
 """
 import argparse
-import json
 import os
-import sys
+import platform
 import time
 
 import numpy as np
 import pandas as pd
 import torch
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from common import (  # noqa: E402
+from common import (
     MAX_LEN,
     MIXED_TRAIN_TOTAL,
     MODELS,
     RESULTS,
     SEED,
+    TRAIN_PER_CLASS,
     compute_metrics,
     ensure_dirs,
     load_split,
     set_seed,
     write_json,
 )
-from transformer_utils import MODEL_NAME, pick_eval_key, tokenize_frame  # noqa: E402
+from transformer_utils import MODEL_NAME, pick_eval_key, tokenize_frame
+
+# Rows per domain in a within-domain run: 10,000 per class.
+WITHIN_TRAIN_TOTAL = TRAIN_PER_CLASS * 2
+
+
+def balanced_head(df, rows):
+    """First `rows // 2` examples of each class, shuffled."""
+    n = rows // 2
+    return pd.concat([df[df.label == 0].head(n), df[df.label == 1].head(n)])
 
 
 def build_training_frame(train_domains, per_domain):
-    """Balanced frame across the given domains, `per_domain` rows from each."""
-    parts = []
-    for domain in train_domains:
-        df = load_split(domain, "train")
-        n = per_domain // 2
-        parts.append(pd.concat([df[df.label == 0].head(n), df[df.label == 1].head(n)]))
-    out = pd.concat(parts).sample(frac=1.0, random_state=SEED).reset_index(drop=True)
-    return out
+    parts = [balanced_head(load_split(d, "train"), per_domain) for d in train_domains]
+    return pd.concat(parts).sample(frac=1.0, random_state=SEED).reset_index(drop=True)
 
 
 def build_validation_frame(val_domains, per_domain):
-    parts = []
-    for domain in val_domains:
-        df = load_split(domain, "val")
-        n = per_domain // 2
-        parts.append(pd.concat([df[df.label == 0].head(n), df[df.label == 1].head(n)]))
+    parts = [balanced_head(load_split(d, "val"), per_domain) for d in val_domains]
     return pd.concat(parts).sample(frac=1.0, random_state=SEED).reset_index(drop=True)
 
 
@@ -64,10 +62,19 @@ def main():
     parser.add_argument("--batch_size", type=int, default=32)
     parser.add_argument("--max_len", type=int, default=MAX_LEN)
     parser.add_argument("--tag", default="")
-    parser.add_argument("--val_per_domain", type=int, default=1000)
+    parser.add_argument(
+        "--val_rows",
+        type=int,
+        default=1000,
+        help="validation rows for a single source domain; mixed runs scale this per domain",
+    )
     parser.add_argument("--seed", type=int, default=SEED)
-    parser.add_argument("--train_size", type=int, default=0,
-                        help="total balanced training rows; 0 uses the stage default")
+    parser.add_argument(
+        "--train_size",
+        type=int,
+        default=0,
+        help="total balanced training rows; 0 uses the default for the setting",
+    )
     args = parser.parse_args()
 
     train_domains = [d.strip() for d in args.train_domains.split(",") if d.strip()]
@@ -77,9 +84,13 @@ def main():
 
     ensure_dirs()
     set_seed(args.seed)
+    torch.manual_seed(args.seed)
+    torch.cuda.manual_seed_all(args.seed)
+
     device = "cuda" if torch.cuda.is_available() else "cpu"
     print(f"device={device} train={train_domains} test={test_domain}")
 
+    import transformers
     from transformers import (
         AutoModelForSequenceClassification,
         AutoTokenizer,
@@ -90,11 +101,11 @@ def main():
 
     tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
 
-    per_domain = MIXED_TRAIN_TOTAL // len(train_domains) if is_mixed else 20000
+    per_domain = MIXED_TRAIN_TOTAL // len(train_domains) if is_mixed else WITHIN_TRAIN_TOTAL
     if args.train_size:
         per_domain = args.train_size // len(train_domains)
     train_df = build_training_frame(train_domains, per_domain)
-    val_df = build_validation_frame(train_domains, args.val_per_domain * len(train_domains))
+    val_df = build_validation_frame(train_domains, args.val_rows * len(train_domains))
     test_df = load_split(test_domain, "test")
     print(f"train={len(train_df)} val={len(val_df)} test={len(test_df)}")
 
@@ -167,9 +178,15 @@ def main():
         "batch_size": args.batch_size,
         "max_len": args.max_len,
         "train_size": int(len(train_df)),
+        "val_size": int(len(val_df)),
         "train_time_s": round(train_time, 1),
         "val": val_metrics,
         "test": test_metrics,
+        "provenance": {
+            "torch": torch.__version__,
+            "transformers": transformers.__version__,
+            "host": platform.node(),
+        },
         "history": trainer.state.log_history,
     }
     write_json(os.path.join(RESULTS, "transformer", f"{tag}_to_{test_domain}.json"), result)

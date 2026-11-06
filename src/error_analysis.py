@@ -1,9 +1,11 @@
-"""Stage 11: error analysis.
+"""Group misclassified reviews with simple linguistic heuristics.
 
-Takes the misclassified reviews dumped by run_cross.py and groups them with simple
-linguistic heuristics: negation, contrast, mixed opinion, length, and domain-specific
-vocabulary. Writes results/error_taxonomy.csv, results/error_samples.json and
-results/error_analysis.md.
+Reads the error dumps written by run_cross.py and tags each review for negation, contrast,
+mixed opinion, length and so on. Writes results/error_cases.csv, results/error_taxonomy.csv,
+results/error_taxonomy_overall.csv, results/error_samples.json and results/error_analysis.md.
+
+The share columns are fractions of tags, not of reviews: a review can carry two tags, so the
+per-setting shares add up to one only because the denominator is the tag count.
 
 Run:  python src/error_analysis.py
 """
@@ -11,13 +13,10 @@ import glob
 import json
 import os
 import re
-import sys
-from collections import Counter
 
 import pandas as pd
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from common import RESULTS, ensure_dirs  # noqa: E402
+from common import RESULTS, ensure_dirs
 
 NEGATION = re.compile(r"\b(not|n't|never|no|nothing|hardly|barely|neither|nor|without)\b", re.I)
 CONTRAST = re.compile(r"\b(but|however|although|though|yet|still|despite|instead)\b", re.I)
@@ -32,32 +31,24 @@ NEGATIVE = re.compile(
     re.I,
 )
 
-DOMAIN_WORDS = {
-    "movie": re.compile(r"\b(film|movie|plot|actor|actress|director|scene|script|cast|cinema)\b", re.I),
-    "business": re.compile(r"\b(restaurant|service|staff|waiter|food|menu|price|hotel|salon)\b", re.I),
-    "product": re.compile(r"\b(amazon|product|shipping|seller|quality|price|order|delivery|item)\b", re.I),
-}
-
 
 def categorise(row):
     text = row["text"]
-    cats = []
+    tags = []
     if NEGATION.search(text):
-        cats.append("negation")
+        tags.append("negation")
     if CONTRAST.search(text):
-        cats.append("contrast")
-    has_pos = bool(POSITIVE.search(text))
-    has_neg = bool(NEGATIVE.search(text))
-    if has_pos and has_neg:
-        cats.append("mixed opinion")
+        tags.append("contrast")
+    if POSITIVE.search(text) and NEGATIVE.search(text):
+        tags.append("mixed opinion")
     words = len(str(text).split())
     if words > 300:
-        cats.append("long review")
+        tags.append("long review")
     elif words < 15:
-        cats.append("very short review")
-    if not cats:
-        cats.append("other")
-    row["categories"] = cats
+        tags.append("very short review")
+    if not tags:
+        tags.append("other")
+    row["categories"] = tags
     row["words"] = words
     return row
 
@@ -74,32 +65,27 @@ def main():
     for path in files:
         key = os.path.basename(path)[len("cross_") : -len(".json")]
         with open(path, "r", encoding="utf-8") as f:
-            errs = json.load(f)
-        if not errs:
+            errors = json.load(f)
+        if not errors:
             continue
-        for err in errs:
-            err = categorise(dict(err))
-            err["setting"] = key
-            rows.append(err)
-        samples[key] = errs[:12]
+        for error in errors:
+            tagged = categorise(dict(error))
+            tagged["setting"] = key
+            rows.append(tagged)
+        samples[key] = errors[:12]
 
     df = pd.DataFrame(rows)
     df.to_csv(os.path.join(RESULTS, "error_cases.csv"), index=False)
 
-    taxonomy = (
-        df.explode("categories")
-        .groupby(["setting", "categories"])
-        .size()
-        .reset_index(name="count")
-    )
+    exploded = df.explode("categories")
+    taxonomy = exploded.groupby(["setting", "categories"]).size().reset_index(name="count")
     taxonomy["share_of_errors"] = (
         taxonomy["count"] / taxonomy.groupby("setting")["count"].transform("sum")
     ).round(3)
     taxonomy.to_csv(os.path.join(RESULTS, "error_taxonomy.csv"), index=False)
 
     overall = (
-        df.explode("categories")
-        .groupby("categories")
+        exploded.groupby("categories")
         .agg(count=("categories", "size"), mean_words=("words", "mean"))
         .reset_index()
         .sort_values("count", ascending=False)
@@ -113,9 +99,8 @@ def main():
 
     lines = ["# Error analysis", ""]
     lines.append(
-        "Categories come from keyword heuristics applied to the misclassified reviews, so "
-        "they overlap: one review can be tagged as both negation and contrast. Counts below "
-        "are therefore shares of tagged errors, not a partition."
+        "Categories come from keyword heuristics, so they overlap: one review can be tagged "
+        "negation and contrast at once. Shares are fractions of tags."
     )
     lines.append("")
     lines.append("## Overall error categories")

@@ -9,15 +9,17 @@ Writes results/top_features.csv and results/feature_overlap.csv.
 Run:  python src/feature_analysis.py
 """
 import os
-import sys
 
 import pandas as pd
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from common import DOMAINS, RESULTS, SEED, ensure_dirs, load_split, set_seed  # noqa: E402
-from baselines import build_model  # noqa: E402
+from baselines import build_model
+from common import DOMAINS, RESULTS, ensure_dirs, load_split, set_seed
 
 TOP_K = 30
+
+# The main experiments tune C per domain, but comparing coefficient lists across domains
+# only makes sense if every model uses the same regularisation. Keep one shared value.
+FEATURE_C = 1.0
 
 
 def top_terms(model, k=TOP_K):
@@ -38,7 +40,7 @@ def main():
     terms = {}
     for domain in DOMAINS:
         train = load_split(domain, "train")
-        model = build_model("tfidf_lr")
+        model = build_model("tfidf_lr", {"C": FEATURE_C})
         model.fit(train["text"].tolist(), train["label"].tolist())
         positive, negative = top_terms(model)
         terms[domain] = {"positive": positive, "negative": negative}

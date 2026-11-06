@@ -1,4 +1,4 @@
-"""Stage 6: hyperparameter selection on validation data only.
+"""Hyperparameter selection on validation data only.
 
 TF-IDF models: small grid over C and n-gram range, scored on each domain's validation split.
 DistilBERT: the learning rate is chosen from results/transformer/tune_*.json, which are
@@ -10,15 +10,13 @@ Writes configs/final.yaml.
 Run:  python src/tune.py
 """
 import glob
-import json
 import os
-import sys
 
 import pandas as pd
 import yaml
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from common import (  # noqa: E402
+from baselines import build_model
+from common import (
     CONFIGS,
     DOMAINS,
     RESULTS,
@@ -28,9 +26,7 @@ from common import (  # noqa: E402
     load_split,
     read_json,
     set_seed,
-    write_json,
 )
-from baselines import build_model  # noqa: E402
 
 TFIDF_GRID = [
     {"C": c, "ngram_range": ng}
@@ -44,26 +40,25 @@ def tune_tfidf():
     for domain in DOMAINS:
         train = load_split(domain, "train")
         val = load_split(domain, "val")
-        best = None
         for params in TFIDF_GRID:
             for kind in ("tfidf_lr", "tfidf_svm"):
                 model = build_model(kind, params)
                 model.fit(train["text"].tolist(), train["label"].tolist())
                 pred = model.predict(val["text"].tolist()).tolist()
                 met = compute_metrics(val["label"].tolist(), pred)
-                row = {
-                    "domain": domain,
-                    "model": kind,
-                    "C": params["C"],
-                    "ngram_range": str(params["ngram_range"]),
-                    "val_macro_f1": round(met["macro_f1"], 4),
-                }
-                results.append(row)
-                if best is None or row["val_macro_f1"] > best["val_macro_f1"]:
-                    best = row
-        print(f"[{domain}] best TF-IDF: {best}")
+                results.append(
+                    {
+                        "domain": domain,
+                        "model": kind,
+                        "C": params["C"],
+                        "ngram_range": str(params["ngram_range"]),
+                        "val_macro_f1": round(met["macro_f1"], 4),
+                    }
+                )
     df = pd.DataFrame(results)
     df.to_csv(os.path.join(RESULTS, "tuning_tfidf.csv"), index=False)
+    best = df.sort_values("val_macro_f1", ascending=False).groupby(["domain", "model"]).first()
+    print(best.to_string())
     return df
 
 
@@ -80,7 +75,7 @@ def pick_distilbert_lr():
             }
         )
     if not rows:
-        return {"lr": 2e-5, "val_macro_f1": None, "note": "no tuning runs found; default lr"}
+        raise SystemExit("no DistilBERT tuning runs found under results/transformer")
     df = pd.DataFrame(rows).sort_values("val_macro_f1", ascending=False)
     df.to_csv(os.path.join(RESULTS, "tuning_distilbert.csv"), index=False)
     best = df.iloc[0]
@@ -102,9 +97,14 @@ def main():
 
     config = {
         "seed": SEED,
-        "data": {"train_per_class": 10000, "val_per_class": 1000, "test_per_class": 5000},
+        "data": {
+            "train_per_class": 10000,
+            "test_per_class": 5000,
+            "val_rows_prepared": 2000,
+            "val_rows_used": {"within": 1000, "mixed": 4000},
+        },
         "tfidf": {
-            "selection": "per-domain validation grid over C in {0.5,1,2} and ngram in {(1,1),(1,2)}",
+            "selection": "per-domain grid over C in {0.5,1,2} and ngram in {(1,1),(1,2)}",
             "best": best_tfidf.to_dict(orient="records"),
         },
         "distilbert": {
@@ -114,7 +114,7 @@ def main():
             "epochs": 3,
             "learning_rate": distilbert["lr"],
             "selection": "learning rate chosen on IMDb validation; applied to every domain",
-            "val_macro_f1": distilbert.get("val_macro_f1"),
+            "val_macro_f1": distilbert["val_macro_f1"],
         },
     }
     with open(os.path.join(CONFIGS, "final.yaml"), "w", encoding="utf-8") as f:

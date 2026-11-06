@@ -1,16 +1,16 @@
-"""Shared DistilBERT helpers for training and inference."""
+"""Helpers shared by the DistilBERT training and inference scripts."""
 import inspect
-import os
 
 import numpy as np
 import torch
+import transformers
 
 MODEL_NAME = "distilbert-base-uncased"
 
 
 def pick_eval_key():
     """TrainingArguments renamed evaluation_strategy to eval_strategy in transformers 4.46."""
-    params = inspect.signature(__import__("transformers").TrainingArguments.__init__).parameters
+    params = inspect.signature(transformers.TrainingArguments.__init__).parameters
     return "eval_strategy" if "eval_strategy" in params else "evaluation_strategy"
 
 
@@ -33,7 +33,7 @@ def predict_texts(model_dir, texts, max_len=256, batch_size=64, device=None):
         device = "cuda" if torch.cuda.is_available() else "cpu"
     tokenizer = AutoTokenizer.from_pretrained(model_dir)
     model = AutoModelForSequenceClassification.from_pretrained(model_dir).to(device).eval()
-    preds = []
+    predictions = []
     texts = list(texts)
     with torch.no_grad():
         for start in range(0, len(texts), batch_size):
@@ -42,5 +42,5 @@ def predict_texts(model_dir, texts, max_len=256, batch_size=64, device=None):
                 batch, truncation=True, max_length=max_len, padding=True, return_tensors="pt"
             ).to(device)
             logits = model(**enc).logits
-            preds.extend(torch.argmax(logits, dim=-1).cpu().numpy().tolist())
-    return np.array(preds)
+            predictions.extend(torch.argmax(logits, dim=-1).cpu().numpy().tolist())
+    return np.array(predictions)

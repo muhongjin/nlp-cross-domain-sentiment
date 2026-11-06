@@ -1,4 +1,4 @@
-"""Stage 9: mixed-domain training.
+"""Mixed-domain training.
 
 Train on two source domains and test on the third, unseen domain. Training size is held
 constant at 20,000 rows total (10,000 per source domain, balanced), so any gain comes from
@@ -8,13 +8,11 @@ Run:  python src/run_mixed.py
 """
 import glob
 import os
-import sys
 
 import joblib
 import pandas as pd
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from common import (  # noqa: E402
+from common import (
     DOMAINS,
     MIXED_TRAIN_TOTAL,
     RESULTS,
@@ -28,7 +26,6 @@ from common import (  # noqa: E402
 
 MODEL_LABEL = {"tfidf_lr": "TF-IDF + LR", "tfidf_svm": "TF-IDF + SVM", "distilbert": "DistilBERT"}
 
-
 def mixed_train_frame(sources, total=MIXED_TRAIN_TOTAL):
     per_domain = total // len(sources)
     parts = []
@@ -37,7 +34,6 @@ def mixed_train_frame(sources, total=MIXED_TRAIN_TOTAL):
         n = per_domain // 2
         parts.append(pd.concat([df[df.label == 0].head(n), df[df.label == 1].head(n)]))
     return pd.concat(parts).sample(frac=1.0, random_state=SEED).reset_index(drop=True)
-
 
 def single_source_scores():
     """Best cross-domain score on a target from any single source, per model."""
@@ -50,7 +46,6 @@ def single_source_scores():
         key = (r["model"], r["target"])
         best[key] = max(best.get(key, 0.0), float(r["macro_f1"]))
     return best
-
 
 def main():
     ensure_dirs()
@@ -113,7 +108,6 @@ def main():
     df.to_csv(out, index=False)
     print(df.to_string(index=False))
     print(f"wrote {out} ({len(df)} rows)")
-
 
 if __name__ == "__main__":
     main()

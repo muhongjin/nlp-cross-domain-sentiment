@@ -1,17 +1,15 @@
-"""Stage 7: collect within-domain results into one table.
+"""Collect the within-domain results into one table.
 
-Reads results/baseline_within.csv (Stage 4) and results/transformer/*.json (Stage 5).
+Reads results/baseline_within.csv and the DistilBERT records under results/transformer/.
 
 Run:  python src/run_within.py
 """
 import glob
 import os
-import sys
 
 import pandas as pd
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from common import DOMAINS, RESULTS, ensure_dirs, read_json  # noqa: E402
+from common import RESULTS, ensure_dirs, read_json
 
 MODEL_LABEL = {
     "majority": "Majority class",
@@ -19,7 +17,6 @@ MODEL_LABEL = {
     "tfidf_svm": "TF-IDF + SVM",
     "distilbert": "DistilBERT",
 }
-
 
 def main():
     ensure_dirs()
@@ -70,7 +67,6 @@ def main():
     df.to_csv(out, index=False)
     print(df.to_string(index=False))
     print(f"wrote {out} ({len(df)} rows)")
-
 
 if __name__ == "__main__":
     main()

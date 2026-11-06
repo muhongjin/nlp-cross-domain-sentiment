@@ -1,4 +1,4 @@
-"""Stage 4: majority-class baseline, TF-IDF + Logistic Regression, TF-IDF + Linear SVM.
+"""Majority-class baseline, TF-IDF + Logistic Regression and TF-IDF + Linear SVM.
 
 Fits one model per domain on the training split, then evaluates on validation and test.
 The TF-IDF vectoriser is fitted on training text only.
@@ -6,11 +6,9 @@ The TF-IDF vectoriser is fitted on training text only.
 Run:  python src/baselines.py
 """
 import os
-import sys
 import time
 
 import joblib
-import numpy as np
 import pandas as pd
 import yaml
 from sklearn.dummy import DummyClassifier
@@ -19,8 +17,7 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.pipeline import Pipeline
 from sklearn.svm import LinearSVC
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from common import (  # noqa: E402
+from common import (
     CONFIGS,
     DOMAINS,
     MODELS,
@@ -35,7 +32,7 @@ from common import (  # noqa: E402
 
 
 def load_tuned_params():
-    """Read the per-domain best TF-IDF settings chosen in Stage 6, if available."""
+    """Per-domain TF-IDF settings chosen by src/tune.py, if that has been run."""
     path = os.path.join(CONFIGS, "final.yaml")
     if not os.path.exists(path):
         return {}
@@ -46,11 +43,19 @@ def load_tuned_params():
         ngram = row.get("ngram_range", "(1, 2)")
         if isinstance(ngram, str):
             ngram = tuple(int(x) for x in ngram.strip("()").split(","))
-        tuned[(row["domain"], row["model"])] = {
-            "C": float(row["C"]),
-            "ngram_range": tuple(ngram),
-        }
+        tuned[(row["domain"], row["model"])] = {"C": float(row["C"]), "ngram_range": tuple(ngram)}
     return tuned
+
+
+def vectoriser(params):
+    return TfidfVectorizer(
+        ngram_range=tuple(params.get("ngram_range", (1, 2))),
+        min_df=params.get("min_df", 2),
+        max_features=params.get("max_features", 200000),
+        sublinear_tf=True,
+        strip_accents="unicode",
+        lowercase=True,
+    )
 
 
 def build_model(kind, params=None):
@@ -60,17 +65,7 @@ def build_model(kind, params=None):
     if kind == "tfidf_lr":
         return Pipeline(
             [
-                (
-                    "tfidf",
-                    TfidfVectorizer(
-                        ngram_range=tuple(params.get("ngram_range", (1, 2))),
-                        min_df=params.get("min_df", 2),
-                        max_features=params.get("max_features", 200000),
-                        sublinear_tf=True,
-                        strip_accents="unicode",
-                        lowercase=True,
-                    ),
-                ),
+                ("tfidf", vectoriser(params)),
                 (
                     "clf",
                     LogisticRegression(
@@ -85,28 +80,14 @@ def build_model(kind, params=None):
     if kind == "tfidf_svm":
         return Pipeline(
             [
-                (
-                    "tfidf",
-                    TfidfVectorizer(
-                        ngram_range=tuple(params.get("ngram_range", (1, 2))),
-                        min_df=params.get("min_df", 2),
-                        max_features=params.get("max_features", 200000),
-                        sublinear_tf=True,
-                        strip_accents="unicode",
-                        lowercase=True,
-                    ),
-                ),
+                ("tfidf", vectoriser(params)),
                 ("clf", LinearSVC(C=params.get("C", 1.0), random_state=SEED)),
             ]
         )
     raise ValueError(kind)
 
 
-def predict(model, texts):
-    return model.predict(list(texts))
-
-
-def train_and_evaluate(domain, kind, params=None, eval_splits=("val", "test")):
+def train_and_evaluate(domain, kind, params=None):
     train = load_split(domain, "train")
     model = build_model(kind, params)
     t0 = time.time()
@@ -114,10 +95,10 @@ def train_and_evaluate(domain, kind, params=None, eval_splits=("val", "test")):
     train_time = time.time() - t0
 
     out = {"domain": domain, "model": kind, "train_time_s": round(train_time, 2)}
-    for split in eval_splits:
+    for split in ("val", "test"):
         df = load_split(domain, split)
-        pred = predict(model, df["text"].tolist())
-        out[split] = compute_metrics(df["label"].tolist(), pred.tolist())
+        pred = model.predict(df["text"].tolist()).tolist()
+        out[split] = compute_metrics(df["label"].tolist(), pred)
     return model, out
 
 
@@ -132,9 +113,8 @@ def main():
             params = tuned.get((domain, kind))
             model, res = train_and_evaluate(domain, kind, params)
             res["params"] = params or {}
-            path = os.path.join(MODELS, f"{kind}_{domain}.joblib")
             if kind != "majority":
-                joblib.dump(model, path)
+                joblib.dump(model, os.path.join(MODELS, f"{kind}_{domain}.joblib"))
             write_json(os.path.join(RESULTS, "baseline", f"{kind}_{domain}.json"), res)
             rows.append(
                 {

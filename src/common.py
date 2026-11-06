@@ -35,34 +35,27 @@ FIGURES = os.path.join(ROOT, "figures")
 MODELS = os.path.join(ROOT, "models")
 CONFIGS = os.path.join(ROOT, "configs")
 
-
 def set_seed(seed=SEED):
+    """Seed the process. Torch seeds are set separately by the training scripts."""
     random.seed(seed)
     np.random.seed(seed)
-    try:
-        import torch
 
-        torch.manual_seed(seed)
-        torch.cuda.manual_seed_all(seed)
-    except Exception:
-        pass
-
+def fmt(value, digits=3):
+    """Format a score the same way in tables and figures."""
+    return f"{value:.{digits}f}"
 
 def ensure_dirs():
     for d in (PROCESSED, RESULTS, FIGURES, MODELS, CONFIGS):
         os.makedirs(d, exist_ok=True)
-
 
 def write_json(path, obj):
     os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
     with open(path, "w", encoding="utf-8") as f:
         json.dump(obj, f, indent=2)
 
-
 def read_json(path):
     with open(path, "r", encoding="utf-8") as f:
         return json.load(f)
-
 
 def compute_metrics(y_true, y_pred):
     p, r, f, s = precision_recall_fscore_support(
@@ -83,13 +76,5 @@ def compute_metrics(y_true, y_pred):
         "confusion_matrix": confusion_matrix(y_true, y_pred, labels=[0, 1]).tolist(),
     }
 
-
 def load_split(domain, split):
     return pd.read_parquet(os.path.join(PROCESSED, domain, f"{split}.parquet"))
-
-
-def append_row(csv_path, row):
-    """Append one result row to a CSV, writing the header on first use."""
-    df = pd.DataFrame([row])
-    header = not os.path.exists(csv_path)
-    df.to_csv(csv_path, mode="a", header=header, index=False)

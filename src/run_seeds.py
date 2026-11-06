@@ -7,16 +7,13 @@ Run:  python src/run_seeds.py
 """
 import glob
 import os
-import sys
 
 import numpy as np
 import pandas as pd
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from common import DOMAINS, RESULTS, ensure_dirs, read_json  # noqa: E402
+from common import DOMAINS, RESULTS, ensure_dirs, read_json
 
 DOMAIN_LABEL = {"imdb": "IMDb", "yelp": "Yelp", "amazon": "Amazon"}
-
 
 def main():
     ensure_dirs()
@@ -51,7 +48,6 @@ def main():
     df = pd.DataFrame(rows)
     df.to_csv(os.path.join(RESULTS, "seed_robustness.csv"), index=False)
     print(df.to_string(index=False))
-
 
 if __name__ == "__main__":
     main()

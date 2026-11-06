@@ -4,26 +4,19 @@ Two measures per domain pair:
   - Jensen-Shannon divergence between unigram distributions over the test split
   - Jaccard overlap of the 5,000 most frequent words
 
-Writes results/domain_distance.csv and figures/fig_domain_distance.png.
+Writes results/domain_distance.csv. The figure is drawn by src/visualize.py.
 
 Run:  python src/domain_distance.py
 """
 import os
-import sys
 from collections import Counter
 from itertools import combinations
 
-import matplotlib
+import numpy as np
+import pandas as pd
 
-matplotlib.use("Agg")
-import matplotlib.pyplot as plt  # noqa: E402
-import numpy as np  # noqa: E402
-import pandas as pd  # noqa: E402
+from common import DOMAINS, RESULTS, ensure_dirs, load_split
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from common import DOMAINS, FIGURES, RESULTS, ensure_dirs, load_split  # noqa: E402
-
-DOMAIN_LABEL = {"imdb": "IMDb", "yelp": "Yelp", "amazon": "Amazon"}
 TOP_WORDS = 5000
 
 
@@ -60,7 +53,6 @@ def main():
         top_words[domain] = {w for w, _ in counters[domain].most_common(TOP_WORDS)}
 
     rows = []
-    matrix = pd.DataFrame(np.nan, index=DOMAINS, columns=DOMAINS, dtype=float)
     for a, b in combinations(DOMAINS, 2):
         jsd = js_divergence(counters[a], counters[b])
         overlap = len(top_words[a] & top_words[b]) / len(top_words[a] | top_words[b])
@@ -74,29 +66,10 @@ def main():
                 "mean_words_b": round(lengths[b], 1),
             }
         )
-        matrix.loc[a, b] = jsd
-        matrix.loc[b, a] = jsd
-    for domain in DOMAINS:
-        matrix.loc[domain, domain] = 0.0
 
     out = pd.DataFrame(rows)
     out.to_csv(os.path.join(RESULTS, "domain_distance.csv"), index=False)
     print(out.to_string(index=False))
-
-    fig, ax = plt.subplots(figsize=(5.2, 4.2))
-    im = ax.imshow(matrix.values, cmap="Blues")
-    ax.set_xticks(range(3))
-    ax.set_yticks(range(3))
-    ax.set_xticklabels([DOMAIN_LABEL[d] for d in DOMAINS])
-    ax.set_yticklabels([DOMAIN_LABEL[d] for d in DOMAINS])
-    ax.set_title("Jensen-Shannon divergence between domains")
-    for i in range(3):
-        for j in range(3):
-            ax.text(j, i, f"{matrix.values[i, j]:.3f}", ha="center", va="center", fontsize=10)
-    fig.colorbar(im, ax=ax, shrink=0.8, label="JSD (bits)")
-    fig.savefig(os.path.join(FIGURES, "fig_domain_distance.png"), dpi=160, bbox_inches="tight")
-    plt.close(fig)
-    print("wrote results/domain_distance.csv and figures/fig_domain_distance.png")
 
 
 if __name__ == "__main__":

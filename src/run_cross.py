@@ -1,36 +1,39 @@
-"""Stage 8: cross-domain evaluation.
+"""Cross-domain evaluation.
 
 Every model trained on a source domain is evaluated on the other two domains' test sets.
 Cross-domain evaluation reuses the within-domain checkpoints, so no retraining happens here.
 
+Each setting also dumps a sample of its misclassified reviews for the error analysis. The
+sample is capped at MAX_ERRORS_PER_SETTING; the full error counts live in
+results/cross_metrics.json, which is built from the confusion matrices.
+
 Run:  python src/run_cross.py
 """
-import glob
 import json
 import os
-import sys
 
 import joblib
 import pandas as pd
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from common import (  # noqa: E402
+from common import (
     DOMAINS,
     MODELS,
     RESULTS,
     compute_metrics,
     ensure_dirs,
     load_split,
-    read_json,
     set_seed,
 )
-from transformer_utils import predict_texts  # noqa: E402
+from transformer_utils import predict_texts
 
 MODEL_LABEL = {
     "tfidf_lr": "TF-IDF + LR",
     "tfidf_svm": "TF-IDF + SVM",
     "distilbert": "DistilBERT",
 }
+
+# Enough for qualitative reading without bloating the repository.
+MAX_ERRORS_PER_SETTING = 120
 
 
 def load_within_scores():
@@ -43,21 +46,36 @@ def load_within_scores():
     return scores
 
 
-def dump_errors(rows, path, limit=120):
-    os.makedirs(os.path.dirname(path), exist_ok=True)
-    with open(path, "w", encoding="utf-8") as f:
-        json.dump(rows[:limit], f, indent=1)
+def record(kind, source, target, model_label, pred, frame, within, state):
+    met = compute_metrics(frame["label"].tolist(), list(pred))
+    state["metrics"][f"{kind}_{source}_to_{target}"] = met
+    base = within.get((model_label, source, source))
+    state["rows"].append(
+        {
+            "setting": "cross",
+            "model": model_label,
+            "source": source,
+            "target": target,
+            "accuracy": round(met["accuracy"], 4),
+            "macro_f1": round(met["macro_f1"], 4),
+            "within_macro_f1": base,
+            "drop": round(base - met["macro_f1"], 4) if base else None,
+        }
+    )
+    state["errors"][f"{kind}_{source}_to_{target}"] = [
+        {"text": t, "true": int(y), "pred": int(p), "length": len(str(t).split())}
+        for t, y, p in zip(frame["text"], frame["label"], pred)
+        if y != p
+    ]
+    print(f"{model_label}: {source} -> {target} macro_f1={met['macro_f1']:.4f}")
 
 
 def main():
     ensure_dirs()
     set_seed()
     within = load_within_scores()
-    out_rows = []
-    error_bucket = {}
-    full_metrics = {}
+    state = {"rows": [], "errors": {}, "metrics": {}}
 
-    # ---- TF-IDF baselines: reuse the model fitted on the source domain ----
     for source in DOMAINS:
         for kind in ("tfidf_lr", "tfidf_svm"):
             model_path = os.path.join(MODELS, f"{kind}_{source}.joblib")
@@ -69,35 +87,8 @@ def main():
                     continue
                 df = load_split(target, "test")
                 pred = model.predict(df["text"].tolist()).tolist()
-                met = compute_metrics(df["label"].tolist(), pred)
-                full_metrics[f"{kind}_{source}_to_{target}"] = met
-                base = within.get((MODEL_LABEL[kind], source, source))
-                out_rows.append(
-                    {
-                        "setting": "cross",
-                        "model": MODEL_LABEL[kind],
-                        "source": source,
-                        "target": target,
-                        "accuracy": round(met["accuracy"], 4),
-                        "macro_f1": round(met["macro_f1"], 4),
-                        "within_macro_f1": base,
-                        "drop": round(base - met["macro_f1"], 4) if base else None,
-                    }
-                )
-                wrong = [
-                    {
-                        "text": t,
-                        "true": int(y),
-                        "pred": int(p),
-                        "length": len(str(t).split()),
-                    }
-                    for t, y, p in zip(df["text"], df["label"], pred)
-                    if y != p
-                ]
-                error_bucket[f"{kind}_{source}_to_{target}"] = wrong
-                print(f"{kind}: {source} -> {target} macro_f1={met['macro_f1']:.4f}")
+                record(kind, source, target, MODEL_LABEL[kind], pred, df, within, state)
 
-    # ---- DistilBERT checkpoints ----
     for source in DOMAINS:
         model_dir = os.path.join(MODELS, f"distilbert_{source}")
         if not os.path.isdir(model_dir):
@@ -106,47 +97,24 @@ def main():
             if target == source:
                 continue
             df = load_split(target, "test")
-            pred = predict_texts(model_dir, df["text"].tolist())
-            met = compute_metrics(df["label"].tolist(), pred.tolist())
-            full_metrics[f"distilbert_{source}_to_{target}"] = met
-            base = within.get((MODEL_LABEL["distilbert"], source, source))
-            out_rows.append(
-                {
-                    "setting": "cross",
-                    "model": MODEL_LABEL["distilbert"],
-                    "source": source,
-                    "target": target,
-                    "accuracy": round(met["accuracy"], 4),
-                    "macro_f1": round(met["macro_f1"], 4),
-                    "within_macro_f1": base,
-                    "drop": round(base - met["macro_f1"], 4) if base else None,
-                }
-            )
-            wrong = [
-                {
-                    "text": t,
-                    "true": int(y),
-                    "pred": int(p),
-                    "length": len(str(t).split()),
-                }
-                for t, y, p in zip(df["text"], df["label"], pred)
-                if y != p
-            ]
-            error_bucket[f"distilbert_{source}_to_{target}"] = wrong
-            print(f"distilbert: {source} -> {target} macro_f1={met['macro_f1']:.4f}")
+            pred = predict_texts(model_dir, df["text"].tolist()).tolist()
+            record("distilbert", source, target, MODEL_LABEL["distilbert"], pred, df, within, state)
 
-    out = pd.DataFrame(out_rows)
+    out = pd.DataFrame(state["rows"])
     if not out.empty:
         out = out.sort_values(["model", "source", "target"])
         out.to_csv(os.path.join(RESULTS, "cross_domain.csv"), index=False)
         print(out.to_string(index=False))
         print(f"wrote results/cross_domain.csv ({len(out)} rows)")
 
-    for key, rows in error_bucket.items():
-        dump_errors(rows, os.path.join(RESULTS, "errors", f"cross_{key}.json"))
+    errors_dir = os.path.join(RESULTS, "errors")
+    os.makedirs(errors_dir, exist_ok=True)
+    for key, rows in state["errors"].items():
+        with open(os.path.join(errors_dir, f"cross_{key}.json"), "w", encoding="utf-8") as f:
+            json.dump(rows[:MAX_ERRORS_PER_SETTING], f, indent=1)
 
     with open(os.path.join(RESULTS, "cross_metrics.json"), "w", encoding="utf-8") as f:
-        json.dump(full_metrics, f, indent=1)
+        json.dump(state["metrics"], f, indent=1)
 
 
 if __name__ == "__main__":
