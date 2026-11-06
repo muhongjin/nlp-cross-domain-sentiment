@@ -93,9 +93,9 @@ Three settings:
 
 ![Within-domain macro-F1](figures/fig_within_domain.png)
 
-Yelp is the easiest domain for every model and Amazon the hardest for both TF-IDF models.
-DistilBERT is ahead everywhere, but on IMDb the margin over TF-IDF SVM is 0.002, which is
-smaller than the seed-to-seed spread in 4.5. On IMDb the two should be treated as tied.
+Yelp is the easiest domain for all three classifiers and Amazon the hardest for both TF-IDF
+models. DistilBERT is ahead everywhere, but on IMDb the margin over TF-IDF SVM is 0.002, which
+is smaller than the seed-to-seed spread in 4.5. On IMDb the two should be treated as tied.
 
 ### 4.2 Across domains
 
