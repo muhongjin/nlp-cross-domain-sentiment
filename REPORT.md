@@ -1,274 +1,371 @@
-# Cross-domain sentiment analysis: evaluating generalisation across review domains
+# Cross-domain sentiment analysis
 
-NLP group project. Three review domains, four models, three experimental settings.
+NLP group project. Three review domains, four models, three evaluation settings.
 
-## Abstract
+## Summary
 
-We compare a majority-class baseline, two TF-IDF classifiers and a fine-tuned DistilBERT model on movie, business and product reviews. Inside a domain, DistilBERT reached the highest average macro-F1 at 0.925. Crossing a domain boundary cost the TF-IDF models about 0.065 macro-F1 and DistilBERT about 0.034, so the transformer degraded more gently even though it started higher. Mixed-domain training changed the result by no more than 0.022 macro-F1 in either direction, which is close to the seed-to-seed spread, and it helped only when the target was the product domain. Review length explains more of the transfer loss than vocabulary distance does: accuracy on cross-domain reviews falls from 0.909 below 100 words to 0.809 above 200.
+We trained a majority-class baseline, two TF-IDF classifiers and a fine-tuned DistilBERT model
+on movie, business and product reviews, then measured how much performance they lose when the
+test reviews come from a different domain. Within a domain DistilBERT reached 0.902 to 0.949
+macro-F1 and the TF-IDF models 0.879 to 0.932. Crossing a domain boundary cost DistilBERT
+between 0.000 and 0.097 macro-F1 depending on the direction, and cost the TF-IDF models about
+twice as much on average (0.063 and 0.065 against 0.034). Training on two domains and testing
+on the third changed scores by at most 0.022 macro-F1, which is close to the variation between
+seeds, so that part of the study is inconclusive.
 
 ## 1. Introduction
 
-Online reviews are one of the few places where a business can read what customers actually think, at a volume nobody can read by hand. Sentiment classifiers promise to do that reading automatically, but a classifier learns the vocabulary of the reviews it was trained on. A model trained on film criticism meets a different vocabulary when it reads restaurant complaints. The word unpredictable can praise a plot and describe a defect in a power bank.
+Online reviews are one of the few places where a business can read what customers think at a
+volume nobody can read by hand. A sentiment classifier can do that reading automatically, but
+it learns the vocabulary of the reviews it was trained on. A model trained on film criticism
+meets different words when it reads restaurant complaints, and the word "unpredictable" can
+praise a plot or describe a defect in a power bank.
 
-This project asks how much performance a sentiment model loses when it crosses a domain boundary, and whether training on more than one domain reduces that loss.
-
-**Research question.** How does moving from within-domain to cross-domain evaluation affect the sentiment classification performance of traditional machine learning and transformer models, and can mixed-domain training reduce this performance gap?
+The project asks two things. First, how much performance does a sentiment model lose when the
+test domain differs from the training domain? Second, does training on more than one domain
+reduce that loss?
 
 ## 2. Data
 
-Three English review datasets, each reduced to a common size so that a larger training pool cannot explain a performance difference.
+Three English review datasets, each cut to the same size so that a larger training pool cannot
+explain a performance difference.
 
-| Dataset | Domain | Train | Validation | Test | Positive class |
-|---|---|---:|---:|---:|---|
-| IMDb | movie reviews | 20,000 | 2,000 | 10,000 | rating 7 and above |
-| Yelp Polarity | business and service reviews | 20,000 | 2,000 | 10,000 | 3 to 4 stars |
-| Amazon Polarity | product reviews | 20,000 | 2,000 | 10,000 | 4 to 5 stars |
+| Dataset | Domain | Train | Test | Positive class |
+|---|---|---:|---:|---|
+| IMDb | movie reviews | 20,000 | 10,000 | rating 7 and above |
+| Yelp Polarity | business and service reviews | 20,000 | 10,000 | 3 to 4 stars |
+| Amazon Polarity | product reviews | 20,000 | 10,000 | 4 to 5 stars |
 
-Length statistics for the test splits:
+The prepared validation split holds 2,000 rows per domain. Model selection used part of it:
+1,000 rows for the within-domain runs and 4,000 rows for the mixed-domain runs, as recorded in
+`configs/final.yaml`.
 
-| domain   |   rows |   positive_rate |   mean_words |   median_words |   p95_words |
-|:---------|-------:|----------------:|-------------:|---------------:|------------:|
-| IMDb     |  10000 |             0.5 |        228.8 |            172 |      584.05 |
-| Yelp     |  10000 |             0.5 |        133.1 |             98 |      371    |
-| Amazon   |  10000 |             0.5 |         74.3 |             66 |      156    |
+The three datasets define the positive class differently. Yelp treats 3 and 4 stars as positive
+and drops 5-star reviews, so its positive class is milder than IMDb's (7 out of 10) and
+Amazon's (4 out of 5 stars). This comes from the source data and affects comparisons of
+absolute scores across domains.
 
-The three datasets build their labels in different ways. Yelp treats 3 and 4 stars as positive and drops 5-star reviews, so its positive class is milder than IMDb's (7 out of 10) and Amazon's (4 out of 5 stars). This is a property of the source data, not something this project changed, and it matters when comparing absolute scores across domains.
+Exact duplicates are removed on normalised text across all splits and all three datasets; the
+first occurrence wins, so a review that appears in both IMDb and Amazon stays in IMDb. A second
+pass checked for near-duplicates that exact matching would miss. It samples eight word 5-gram
+shingles per review as an index key, then scores candidate pairs with an exact Jaccard
+similarity, flagging pairs at 0.8 or above. Over the 90,000 training and test reviews
+(validation was not part of this check) it found 11 pairs, all inside IMDb: none crossed
+datasets and none crossed the train and test split of a domain.
 
-Stage 3 removes exact duplicates on normalised text across all splits and all three datasets, so a review that appears in two datasets is kept once. Amazon Polarity spans many product categories, including films and books, so some vocabulary overlap with IMDb survives that step.
+Two artefacts survived cleaning. IMDb reviews carry HTML line-break tags in the source text,
+and Amazon Polarity contains a few non-English reviews. We left both in place.
 
-A second pass looked for near-duplicates that exact matching would miss. It builds an eight-shingle signature for each of the 90,000 pooled reviews, verifies candidate pairs with an exact Jaccard score on word 5-grams, and flags pairs at 0.8 or above. It found 11 pairs in total, 0 across datasets and 0 between the train and test split of the same domain. Near-duplicate leakage is therefore negligible at this scale, and no further rows were removed.
+## 3. Models and settings
 
-Two data artefacts survived cleaning and show up in the error analysis. IMDb reviews carry HTML line-break tags in the source text, and Amazon Polarity contains a small number of non-English reviews. Neither was filtered out, because the task is to evaluate the models as they would meet real data.
-
-## 3. Method
-
-Four models, all trained on the same splits:
-
-| Model | Details |
+| Model | Settings |
 |---|---|
-| Majority class | Predicts the most frequent training label. Floor for comparison. |
-| TF-IDF + Logistic Regression | Word 1-2 grams, sublinear term frequency, C tuned per domain on validation. |
-| TF-IDF + Linear SVM | Same features, C tuned per domain on validation. |
-| DistilBERT | distilbert-base-uncased, max length 256, batch 32, 3 epochs, learning rate 2e-5, best epoch chosen on validation. |
+| Majority class | predicts the most frequent training label |
+| TF-IDF + Logistic Regression | word 1-2 grams, sublinear term frequency, C tuned per domain on validation |
+| TF-IDF + Linear SVM | same features, C tuned per domain on validation |
+| DistilBERT | distilbert-base-uncased, max length 256, batch 32, 3 epochs, learning rate 2e-5, best epoch chosen on validation |
 
-The TF-IDF vectoriser is fitted on training text only. Hyperparameters come from a small grid scored on each domain's validation split. The DistilBERT learning rate was chosen on IMDb validation and applied to every domain. Test splits took no part in training or in hyperparameter selection.
+The TF-IDF vectoriser is fitted on training text only. The learning rate for DistilBERT was
+chosen from two runs on IMDb validation (2e-5 scored 0.9090 and 3e-5 scored 0.9090 to four
+decimals; the script kept 2e-5) and applied to every domain. Test splits played no part in
+training or in hyperparameter selection.
 
-Three experimental settings:
+Three settings:
 
 1. Within-domain: train and test on the same domain.
-2. Cross-domain: train on one domain, test on each of the other two. No retraining, the within-domain checkpoint is reused.
-3. Mixed-domain: train on two domains, test on the third. Training size stays at 20,000 rows (10,000 per source domain) so the comparison isolates domain diversity rather than data volume.
+2. Cross-domain: train on one domain, test on each of the other two. The within-domain
+   checkpoint is reused, so no retraining happens per direction.
+3. Mixed-domain: train on two domains, test on the third. The training set stays at 20,000
+   rows (10,000 per source domain), so the comparison isolates domain diversity rather than
+   data volume.
 
 ## 4. Results
 
-### 4.1 Within-domain
+### 4.1 Within a domain
 
-| model                            |   IMDb |   Yelp |   Amazon |
-|:---------------------------------|-------:|-------:|---------:|
-| Majority class                   |  0.333 |  0.333 |    0.333 |
-| TF-IDF + LR                      |  0.898 |  0.925 |    0.88  |
-| TF-IDF + SVM                     |  0.9   |  0.932 |    0.881 |
-| DistilBERT                       |  0.902 |  0.949 |    0.925 |
-| Average of the three classifiers |  0.9   |  0.935 |    0.895 |
+| Model | IMDb | Yelp | Amazon |
+|---|---|---|---|
+| Majority class | 0.333 | 0.333 | 0.333 |
+| TF-IDF + LR | 0.898 | 0.925 | 0.879 |
+| TF-IDF + SVM | 0.900 | 0.932 | 0.881 |
+| DistilBERT | 0.902 | 0.949 | 0.925 |
+| Average of the three classifiers | 0.900 | 0.935 | 0.895 |
 
 ![Within-domain macro-F1](figures/fig_within_domain.png)
 
-DistilBERT is highest on all three domains, but on IMDb the margin over TF-IDF is about two thousandths of a point, which is inside the seed-to-seed spread reported in 4.5. Treat the two as tied on IMDb. IMDb is also the hardest domain in absolute terms, which fits the data: film reviews are long, allusive and often mixed in tone, while product and business reviews tend to state a verdict quickly.
+Yelp is the easiest domain for every model and Amazon the hardest for both TF-IDF models.
+DistilBERT is ahead everywhere, but on IMDb the margin over TF-IDF SVM is 0.002, which is
+smaller than the seed-to-seed spread in 4.5. On IMDb the two should be treated as tied.
 
-### 4.2 Cross-domain
+### 4.2 Across domains
 
-**TF-IDF + LR**, macro-F1 with the training domain on the row and the test domain on the column. Diagonal cells repeat the within-domain score for reference.
+Cells on the diagonal repeat the within-domain score. Off the diagonal, the row is the training
+domain and the column the test domain.
 
-|        |   IMDb |   Yelp |   Amazon |
-|:-------|-------:|-------:|---------:|
-| IMDb   |  0.898 |  0.855 |    0.82  |
-| Yelp   |  0.789 |  0.925 |    0.828 |
-| Amazon |  0.851 |  0.883 |    0.88  |
+**TF-IDF + LR**
 
-**TF-IDF + SVM**, macro-F1 with the training domain on the row and the test domain on the column. Diagonal cells repeat the within-domain score for reference.
+| Trained on | Tested on IMDb | Tested on Yelp | Tested on Amazon |
+|---|---|---|---|
+| IMDb | 0.898 | 0.855 | 0.820 |
+| Yelp | 0.789 | 0.925 | 0.828 |
+| Amazon | 0.851 | 0.883 | 0.879 |
 
-|        |   IMDb |   Yelp |   Amazon |
-|:-------|-------:|-------:|---------:|
-| IMDb   |  0.9   |  0.847 |    0.816 |
-| Yelp   |  0.79  |  0.932 |    0.833 |
-| Amazon |  0.864 |  0.888 |    0.881 |
+**TF-IDF + SVM**
 
-**DistilBERT**, macro-F1 with the training domain on the row and the test domain on the column. Diagonal cells repeat the within-domain score for reference.
+| Trained on | Tested on IMDb | Tested on Yelp | Tested on Amazon |
+|---|---|---|---|
+| IMDb | 0.900 | 0.847 | 0.816 |
+| Yelp | 0.790 | 0.932 | 0.833 |
+| Amazon | 0.864 | 0.888 | 0.881 |
 
-|        |   IMDb |   Yelp |   Amazon |
-|:-------|-------:|-------:|---------:|
-| IMDb   |  0.902 |  0.902 |    0.88  |
-| Yelp   |  0.851 |  0.949 |    0.906 |
-| Amazon |  0.887 |  0.925 |    0.925 |
+**DistilBERT**
+
+| Trained on | Tested on IMDb | Tested on Yelp | Tested on Amazon |
+|---|---|---|---|
+| IMDb | 0.902 | 0.901 | 0.880 |
+| Yelp | 0.851 | 0.949 | 0.906 |
+| Amazon | 0.887 | 0.925 | 0.925 |
 
 ![Cross-domain macro-F1](figures/fig_heatmap_macro_f1.png)
 
 ![Performance drop](figures/fig_heatmap_drop.png)
 
-For DistilBERT the largest drop is Yelp to IMDb at 0.097 macro-F1, and the smallest is IMDb to Yelp at 0.000.
+For DistilBERT the largest loss is Yelp to IMDb at 0.097 macro-F1 and the smallest are IMDb to
+Yelp (0.000) and Amazon to Yelp (0.001). Averaged over the two directions, the target domain
+explains a little more of the loss than the source: the mean drop by target ranges from 0.000
+(Yelp as target) to 0.068 (IMDb as target), a spread of 0.068, while the mean drop by source
+ranges from 0.011 to 0.070, a spread of 0.059. Both matter, and the asymmetry is real: a model
+trained on long film reviews handles short reviews well, but a model trained on short verdicts
+struggles with film reviews.
 
-The loss depends far more on the target domain than on the source. On average DistilBERT loses 0.068 macro-F1 when IMDb is the target and 0.000 when Yelp is. Averaged over sources, Yelp as a training domain costs the most (0.070) and IMDb the least (0.011).
+The TF-IDF models show the same pattern with larger losses. Their worst case is also Yelp to
+IMDb (0.136 and 0.143), and they gain slightly when Amazon is the source and Yelp the target
+(about 0.004 and 0.007).
 
-The asymmetry is worth spelling out. A model trained on Yelp loses 0.097 macro-F1 when it reads IMDb, while a model trained on IMDb loses 0.000 when it reads Yelp. Long literary reviews are hard to score with a classifier that learned short consumer verdicts. The reverse direction is almost free, because a model that has seen long, nuanced text handles short verdicts comfortably.
+![Average within and across domains](figures/fig_within_vs_cross.png)
 
-### 4.3 How far apart are the domains?
+Averaged over all six directions, DistilBERT keeps 0.892 macro-F1 across domains against 0.925
+within them, while the two TF-IDF models fall from about 0.90 to about 0.84.
 
-| domain pair     |   Jensen-Shannon divergence |   top 5000 word overlap |   mean words (first) |   mean words (second) |
-|:----------------|----------------------------:|------------------------:|---------------------:|----------------------:|
-| IMDb and Yelp   |                      0.2248 |                  0.3459 |                228.8 |                 133.1 |
-| IMDb and Amazon |                      0.1455 |                  0.5142 |                228.8 |                  74.3 |
-| Yelp and Amazon |                      0.1785 |                  0.4128 |                133.1 |                  74.3 |
+### 4.3 How different are the domains?
+
+| Domain pair | Jensen-Shannon divergence | Top-5000 word overlap | Mean words |
+|---|---|---|---|
+| IMDb / Yelp | 0.2248 | 0.346 | 228.8 / 133.1 |
+| IMDb / Amazon | 0.1455 | 0.514 | 228.8 / 74.3 |
+| Yelp / Amazon | 0.1785 | 0.413 | 133.1 / 74.3 |
 
 ![Domain distance](figures/fig_domain_distance.png)
 
-Vocabulary distance does not line up with the size of the transfer loss. IMDb and Amazon have the lowest divergence at 0.146, partly because Amazon reviews cover films and books, yet moving between them still costs DistilBERT 0.022 to 0.039 macro-F1. IMDb and Yelp are the most distant pair at 0.225, and one direction of that transfer costs nothing at all.
+Vocabulary distance does not line up with the size of the transfer loss. IMDb and Amazon are the
+closest pair by Jensen-Shannon divergence (0.146), partly because Amazon reviews cover films and
+books, yet moving between them still costs DistilBERT 0.022 and 0.039 macro-F1. IMDb and Yelp
+are the most distant pair (0.225), and one direction of that transfer costs nothing.
 
-Target length tracks the drop better than vocabulary distance does. IMDb averages 229 words, Yelp 133 and Amazon 74, and the models trained on the two short domains lose most when IMDb is the target (0.039 and 0.097 macro-F1). The mismatch between how much text a model expects and how much it gets matters more than which words appear.
+Review length tracks the loss better. IMDb averages 229 words, Yelp 133 and Amazon 74, and the
+two models trained on short reviews lose most when IMDb is the target (0.039 from Amazon, 0.097
+from Yelp). Section 5.2 shows the same effect inside a single setting.
 
-### 4.4 Mixed-domain
+### 4.4 Training on two domains
 
-| model        | trained on    | tested on   |   train rows |   mixed macro-F1 |   best single source |   delta |
-|:-------------|:--------------|:------------|-------------:|-----------------:|---------------------:|--------:|
-| DistilBERT   | imdb + yelp   | Amazon      |        20000 |            0.913 |                0.906 |   0.007 |
-| DistilBERT   | yelp + amazon | IMDb        |        20000 |            0.881 |                0.887 |  -0.006 |
-| DistilBERT   | imdb + amazon | Yelp        |        20000 |            0.92  |                0.925 |  -0.005 |
-| TF-IDF + LR  | imdb + yelp   | Amazon      |        20000 |            0.844 |                0.828 |   0.016 |
-| TF-IDF + LR  | yelp + amazon | IMDb        |        20000 |            0.828 |                0.851 |  -0.022 |
-| TF-IDF + LR  | imdb + amazon | Yelp        |        20000 |            0.874 |                0.883 |  -0.009 |
-| TF-IDF + SVM | imdb + yelp   | Amazon      |        20000 |            0.847 |                0.833 |   0.014 |
-| TF-IDF + SVM | yelp + amazon | IMDb        |        20000 |            0.853 |                0.864 |  -0.011 |
-| TF-IDF + SVM | imdb + amazon | Yelp        |        20000 |            0.879 |                0.888 |  -0.009 |
+| Model | Trained on | Tested on | Mixed | Best single source | Delta |
+|---|---|---|---|---|---|
+| DistilBERT | imdb + yelp | Amazon | 0.913 | 0.906 | 0.007 |
+| DistilBERT | yelp + amazon | IMDb | 0.881 | 0.887 | -0.006 |
+| DistilBERT | imdb + amazon | Yelp | 0.920 | 0.925 | -0.005 |
+| TF-IDF + LR | imdb + yelp | Amazon | 0.844 | 0.828 | 0.016 |
+| TF-IDF + LR | yelp + amazon | IMDb | 0.828 | 0.851 | -0.022 |
+| TF-IDF + LR | imdb + amazon | Yelp | 0.874 | 0.883 | -0.009 |
+| TF-IDF + SVM | imdb + yelp | Amazon | 0.847 | 0.833 | 0.014 |
+| TF-IDF + SVM | yelp + amazon | IMDb | 0.853 | 0.864 | -0.011 |
+| TF-IDF + SVM | imdb + amazon | Yelp | 0.879 | 0.888 | -0.009 |
 
 ![Mixed-domain against best single source](figures/fig_mixed_vs_single.png)
 
-Mixed-domain training beat the best single source in 3 of 9 model and target combinations, with a mean change of -0.003 macro-F1. Every gain came from the Amazon target: the two TF-IDF models and DistilBERT all improved there. On IMDb and Yelp the mixed models were slightly worse than the best single source.
+Three of the nine combinations beat the best single source, all of them with Amazon as the
+target, and the mean change across all nine is -0.003 macro-F1. The gains are between 0.007 and
+0.016, which is the same order as the seed-to-seed spread reported in 4.5. The honest reading is
+that mixing two domains at a fixed training budget did not reliably help. Amazon gains because
+it is the most heterogeneous domain, so a second source adds vocabulary; IMDb's difficulty comes
+from long, mixed-tone text, which extra vocabulary does not fix.
 
-The pattern is less obvious than it first looks. IMDb is the hardest target in the cross-domain table, yet mixed-domain training does not help there. Amazon gains because it is the most heterogeneous domain: product reviews span books, music, electronics and films, so a second source adds vocabulary instead of noise. IMDb's difficulty comes from long text and mixed tone, and a wider vocabulary does not fix either. Section 4.5 shows that these changes are close to the seed-to-seed spread, so the mixed-domain comparison supports a weak conclusion only.
+### 4.5 Variation between seeds
 
-### 4.5 Robustness across seeds
+| Domain | Seeds | Runs | Mean | Std | Min | Max |
+|---|---|---|---|---|---|---|
+| IMDb | 42, 43, 44 | 3 | 0.9066 | 0.0043 | 0.9018 | 0.9103 |
+| Yelp | 42, 43, 44 | 3 | 0.9429 | 0.0065 | 0.9358 | 0.9486 |
+| Amazon | 42, 43, 44 | 3 | 0.9278 | 0.0021 | 0.9254 | 0.9294 |
 
-| domain   | seeds      |   runs |   mean test macro-F1 |    std |    min |    max |
-|:---------|:-----------|-------:|---------------------:|-------:|-------:|-------:|
-| IMDb     | 42, 43, 44 |      3 |               0.9066 | 0.0043 | 0.9018 | 0.9103 |
-| Yelp     | 42, 43, 44 |      3 |               0.9429 | 0.0065 | 0.9358 | 0.9486 |
-| Amazon   | 42, 43, 44 |      3 |               0.9278 | 0.0021 | 0.9254 | 0.9294 |
-
-DistilBERT was retrained on each domain with two extra seeds to see how much of the table is noise. The standard deviation across the three runs is at most 0.0065 macro-F1 and the full range is 0.0128. That changes how the rest of the results should be read.
-
-The cross-domain losses of 0.04 to 0.10 are several times larger than the spread, so they stand. The IMDb margin between DistilBERT and TF-IDF SVM is not larger than the spread, so those two models are tied there. The mixed-domain changes of 0.005 to 0.022 are the same order of magnitude as the spread, so the mixed-domain result is weak evidence rather than a firm gain.
+Three runs of the same configuration move the test score by up to 0.013 macro-F1. That is the
+scale to keep in mind when reading the rest of the tables: the cross-domain losses of 0.02 to
+0.10 are several times larger and stand, the IMDb gap between DistilBERT and TF-IDF SVM (0.002)
+does not, and the mixed-domain changes (0.005 to 0.022) sit at the edge of the noise.
 
 ### 4.6 What the classifiers key on
 
-| polarity   | domain pair     |   shared terms in top 20 |   Jaccard | shared words                                                                                      |
-|:-----------|:----------------|-------------------------:|----------:|:--------------------------------------------------------------------------------------------------|
-| positive   | IMDb and Yelp   |                       11 |     0.379 | also, amazing, best, excellent, favorite, fun, great, love, loved, perfect, the best              |
-| positive   | IMDb and Amazon |                       12 |     0.429 | amazing, best, enjoyed, excellent, fun, great, is great, love, perfect, the best, well, wonderful |
-| positive   | Yelp and Amazon |                       11 |     0.379 | amazing, and, awesome, best, excellent, fun, good, great, love, perfect, the best                 |
-| negative   | IMDb and Yelp   |                        9 |     0.29  | awful, bad, horrible, no, nothing, poor, terrible, the worst, worst                               |
-| negative   | IMDb and Amazon |                       12 |     0.429 | at all, bad, boring, horrible, no, nothing, poor, poorly, the worst, waste, waste of, worst       |
-| negative   | Yelp and Amazon |                       10 |     0.333 | bad, don, horrible, money, no, not, nothing, poor, the worst, worst                               |
+| Polarity | Domain pair | Shared terms in top 20 | Jaccard | Example shared words |
+|---|---|---|---|---|
+| positive | IMDb / Yelp | 11 | 0.379 | amazing, best, excellent, great, love, perfect |
+| positive | IMDb / Amazon | 12 | 0.429 | amazing, best, enjoyed, great, love, perfect |
+| positive | Yelp / Amazon | 11 | 0.379 | amazing, best, excellent, great, love, perfect |
+| negative | IMDb / Yelp | 9 | 0.290 | awful, bad, horrible, poor, terrible, worst |
+| negative | IMDb / Amazon | 12 | 0.429 | bad, boring, horrible, poor, waste, worst |
+| negative | Yelp / Amazon | 10 | 0.333 | bad, horrible, no, not, poor, worst |
 
-Positive vocabulary transfers. Eleven or twelve of the twenty strongest positive terms are shared by every pair of domains, and they are plain sentiment adjectives: great, best, love, excellent, amazing, perfect. Negative vocabulary overlaps less, between nine and twelve terms, and the strongest negative features differ in kind. IMDb's are sentiment words (awful, boring, waste), while Yelp's and Amazon's include negation markers such as not, no and don among their top negative features.
+Positive vocabulary transfers. Eleven or twelve of the twenty strongest positive terms are
+shared by every pair of domains, and they are ordinary sentiment adjectives. Negative vocabulary
+overlaps a little less, and the strongest negative features differ in kind: IMDb's are sentiment
+words such as awful and boring, while Yelp's and Amazon's lists include negation markers (no,
+not, don). A model that reads negation as the main negative signal will misfire on a domain
+that expresses negativity through adjectives instead.
 
-That difference matters for transfer. A model that has learned to read negation as the main negative signal will misfire when the target domain expresses negativity through adjectives instead, and the reverse also holds. It also explains why negation and contrast dominate the error categories in section 5.
+These coefficient lists come from one shared regularisation strength (C=1.0) rather than the
+per-domain values used in the main experiments. Comparing coefficient rankings across domains
+requires the same model configuration in each, so the shared value is deliberate.
 
-### 4.7 Does more in-domain data close the gap?
+### 4.7 Does more training data help?
 
-| IMDb training rows   |   Amazon |   IMDb |   Yelp |
-|:---------------------|---------:|-------:|-------:|
-| 5k                   |    0.893 |  0.893 |  0.901 |
-| 10k                  |    0.896 |  0.894 |  0.902 |
-| 20k                  |    0.88  |  0.902 |  0.902 |
+| IMDb training rows | Test IMDb | Test Yelp | Test Amazon |
+|---|---|---|---|
+| 5,000 | 0.893 | 0.901 | 0.893 |
+| 10,000 | 0.894 | 0.902 | 0.896 |
+| 20,000 | 0.902 | 0.901 | 0.880 |
 
 ![Data scaling](figures/fig_data_scaling.png)
 
-Quadrupling the IMDb training set moves within-domain macro-F1 from 0.893 to 0.902, a gain of +0.009. On Amazon the same change gives -0.013, and on Yelp +0.001. Within-domain performance improves while cross-domain performance stays flat or falls, so the gap between domains widens with more data rather than closing. The Amazon fall is inside the seed-to-seed spread from 4.5, so the safe reading is that extra in-domain data does not buy cross-domain performance at this scale.
-
-That rules out data scarcity as the main explanation for the transfer loss. The problem is the mismatch in vocabulary and review length, and adding more IMDb reviews does not fix it.
+Quadrupling the IMDb training set raises within-domain macro-F1 by 0.009 and leaves the two
+cross-domain scores flat (Yelp) or slightly lower (Amazon, -0.013, which is within seed
+variation). Extra in-domain data therefore does not close the gap at this scale, which points
+to vocabulary and length mismatch rather than data scarcity.
 
 ## 5. Error analysis
 
-The table below groups the misclassified reviews from all eighteen cross-domain settings using keyword heuristics. A review can be tagged twice, so the shares overlap and do not sum to one. Full per-setting counts are in `results/error_taxonomy.csv`.
+### 5.1 Confusion direction
 
-| category          |   count |   mean words |   share |
-|:------------------|--------:|-------------:|--------:|
-| contrast          |    1538 |        201.1 |   0.37  |
-| negation          |    1507 |        200   |   0.363 |
-| mixed opinion     |     536 |        264.4 |   0.129 |
-| long review       |     287 |        486.6 |   0.069 |
-| other             |     257 |         49.7 |   0.062 |
-| very short review |      31 |          8.3 |   0.007 |
+The counts below are exact; they are read from the confusion matrices in
+`results/cross_metrics.json`, each computed over the 10,000 test reviews of the target domain.
 
-DistilBERT's confusion direction changes with the source domain:
+| Setting | Negative scored positive | Positive scored negative | Total errors |
+|---|---|---|---|
+| Amazon to IMDb | 509 | 625 | 1,134 |
+| Amazon to Yelp | 373 | 378 | 751 |
+| IMDb to Amazon | 947 | 248 | 1,195 |
+| IMDb to Yelp | 646 | 338 | 984 |
+| Yelp to Amazon | 396 | 544 | 940 |
+| Yelp to IMDb | 328 | 1,150 | 1,478 |
 
-| setting | true negative scored positive | true positive scored negative |
-|---|---:|---:|
-| amazon to imdb | 59 | 61 |
-| amazon to yelp | 58 | 62 |
-| imdb to amazon | 97 | 23 |
-| imdb to yelp | 74 | 46 |
-| yelp to amazon | 48 | 72 |
-| yelp to imdb | 22 | 98 |
+The direction of the errors follows the source domain. A model trained on IMDb calls 947
+negative Amazon reviews positive against 248 the other way. IMDb negative reviews are long and
+dramatic, so the model expects strong language before it says negative; Amazon negatives are
+milder and often include a compliment, and the model reads the compliment as the verdict. The
+opposite happens with a Yelp-trained model on IMDb, which marks 1,150 positive reviews negative
+against 328 the other way, because long emotional prose looks like a rant to a classifier that
+learned short complaints.
 
-A model trained on IMDb over-predicts positive on Amazon (97 negative reviews called positive against 23 the other way). IMDb's negative reviews are often long and dramatic, so the model expects strong language before it says negative. Amazon's negative reviews are milder and often contain a compliment, and the model reads that compliment as the verdict.
+![Confusion matrices](figures/fig_confusion_matrices.png)
 
-The opposite happens with a Yelp-trained model on IMDb. It calls 98 positive film reviews negative against 22 the other way, because long emotional prose looks like a rant to a classifier that learned short, blunt Yelp complaints.
+![Recall by class](figures/fig_per_class_recall.png)
 
-![Recall by class and domain](figures/fig_per_class_recall.png)
+Per-class recall shows the same asymmetry. Yelp to IMDb reaches 0.770 recall on positive
+reviews, while its recall on negatives is 0.934. IMDb to Amazon has the mirror image: 0.950
+positive recall against 0.811 negative recall.
 
-The recall plot makes the same point per class. Positive recall stays high for every source when the target is Yelp or Amazon, and drops furthest on IMDb, where a Yelp-trained model recovers only 0.83 of the positive reviews. Negative recall is the fragile one for models trained on IMDb and asked to read Amazon.
+### 5.2 What the misclassified reviews look like
 
-The most common categories are contrast and negation, both above a third of the tagged errors. A typical failure is a review that praises some aspects and criticises others, with the negative clause carrying the final verdict: the topics in this book are really great, none are covered in any detail unfortunately. Mixed-opinion reviews make up 13 percent. Long reviews make up 7 percent and are almost entirely IMDb samples, where models that truncate at 256 tokens lose the concluding sentence.
+`src/run_cross.py` saves up to 120 misclassified reviews per setting, and the category counts
+below come from those samples, not from all errors. A review can carry more than one tag, so the
+shares are fractions of tags and sum to one only because the denominator is the tag count.
 
-Two artefacts deserve a mention. IMDb text keeps its HTML line-break tags, which the tokeniser treats as ordinary words. Amazon Polarity also contains a few non-English reviews, including French and Spanish, that no model in the study was trained to handle. Both are properties of the public datasets rather than mistakes in the pipeline, but they inflate the error counts slightly.
+| Tag | Count | Mean words | Share of tags |
+|---|---|---|---|
+| contrast | 1,538 | 201.1 | 0.370 |
+| negation | 1,507 | 200.0 | 0.363 |
+| mixed opinion | 536 | 264.4 | 0.129 |
+| long review | 287 | 486.6 | 0.069 |
+| other | 257 | 49.7 | 0.062 |
+| very short review | 31 | 8.3 | 0.007 |
 
-### 5.1 Accuracy by review length
+Most failures involve contrast or negation. A typical case praises some aspects and criticises
+others, with the negative clause carrying the verdict: "the topics in this book are really
+great, none are covered in any detail unfortunately" is labelled negative and scored positive.
+Mixed-opinion reviews make up 13 percent of the tags. Long reviews are 7 percent and are almost
+all IMDb samples.
 
-| setting        |   <=50 |   51-100 |   101-200 | 201-400   | >400   |
-|:---------------|-------:|---------:|----------:|:----------|:-------|
-| Amazon to IMDb |  0.905 |    0.919 |     0.92  | 0.868     | 0.769  |
-| Amazon to Yelp |  0.925 |    0.947 |     0.933 | 0.905     | 0.798  |
-| IMDb to Amazon |  0.887 |    0.878 |     0.875 | -         | -      |
-| IMDb to Yelp   |  0.904 |    0.926 |     0.918 | 0.866     | 0.748  |
-| Yelp to Amazon |  0.907 |    0.906 |     0.905 | -         | -      |
-| Yelp to IMDb   |  0.901 |    0.903 |     0.902 | 0.809     | 0.705  |
+Accuracy also falls with length, in every setting:
+
+| Setting | <=50 words | 51-100 | 101-200 | 201-400 | >400 |
+|---|---|---|---|---|---|
+| Yelp to IMDb | 0.901 | 0.903 | 0.902 | 0.809 | 0.705 |
+| Amazon to IMDb | 0.905 | 0.919 | 0.920 | 0.868 | 0.769 |
+| IMDb to Yelp | 0.904 | 0.926 | 0.918 | 0.866 | 0.748 |
+| Amazon to Yelp | 0.925 | 0.947 | 0.933 | 0.905 | 0.798 |
+| IMDb to Amazon | 0.887 | 0.878 | 0.875 | - | - |
+| Yelp to Amazon | 0.907 | 0.905 | 0.905 | - | - |
+
+The gaps for the two Amazon rows are not missing values: Amazon reviews average 74 words, so no
+bucket above 200 words reaches the 20-review minimum this table requires. Averaged over the
+cells that do exist, accuracy is 0.909 below 100 words and 0.809 above 200. Even within IMDb
+the same effect appears: 0.927 on 101-200 word reviews falls to 0.826 above 400 words.
+Truncation at 256 tokens is one reason, since the concluding sentence often carries the verdict.
 
 ![Accuracy by review length](figures/fig_error_by_length.png)
 
-Length matters in every setting, including within IMDb, where accuracy falls from 0.927 on 101 to 200 word reviews to 0.826 on reviews over 400 words. The fall is steeper across domains: averaged over the six cross-domain settings, accuracy is 0.909 on reviews of 100 words or fewer and 0.808 on reviews longer than 200 words. The longest bucket is where the transfer losses concentrate, which fits the truncation at 256 tokens: the concluding sentence, which often carries the verdict, falls outside the window.
-
+![Review length by domain](figures/fig_length_distribution.png)
 
 ## 6. Limitations
 
-The three datasets use different rules to build their positive class, so part of the cross-domain drop may come from label definition rather than from domain shift. Yelp's positive class sits at 3 to 4 stars, which is weaker than the other two.
+The three datasets build their positive class differently, so part of every cross-domain drop
+may come from label definition rather than from domain shift. Yelp's positive class sits at 3 to
+4 stars, weaker than the other two.
 
-The domains are not equally distant. Yelp and Amazon both collect consumer verdicts on a purchase, while IMDb collects long-form film criticism. Treating the three as three points on the same line would be wrong.
+The domains are not equally distant. Yelp and Amazon both collect consumer verdicts, while IMDb
+collects long-form film criticism. The three are not points on a line.
 
-Near-duplicate screening covers pairs at 0.8 Jaccard similarity on word 5-grams and above. It found 11 such pairs, all inside IMDb. Pairs that paraphrase each other below that threshold, especially between Amazon's film category and IMDb, could still remain.
+Near-duplicate screening covers pairs at 0.8 Jaccard similarity and above. Paraphrases below
+that threshold, especially between Amazon's film category and IMDb, could remain.
 
-Each model was trained once per setting, with the exception of the DistilBERT within-domain runs, which were repeated with three seeds. Training was capped at 20,000 rows to keep the comparison fair, which is well below what DistilBERT can use.
+Each model was trained once per setting, except the DistilBERT within-domain runs, which were
+repeated with three seeds. Training was capped at 20,000 rows to keep the comparison fair, well
+below what DistilBERT can use.
 
-Mixed-domain training holds the total training size constant. That answers whether domain diversity helps at fixed budget, not whether adding more data from a second domain helps in absolute terms.
+Mixed-domain training holds the total training size constant. That answers whether domain
+diversity helps at a fixed budget, not whether adding data from a second domain helps in
+absolute terms.
 
 ## 7. Conclusion
 
-Sentiment models do not transfer for free. Averaged over the three classifiers and the seed 42 runs, macro-F1 fell from 0.910 within a domain to 0.856 across domains. DistilBERT started highest and lost the least, which suggests that pretraining buys some robustness to vocabulary shift. The TF-IDF models dropped roughly twice as far.
+Sentiment models do not transfer for free. Averaged over the three classifiers and the seed 42
+runs, macro-F1 fell from 0.910 within a domain to 0.856 across domains. DistilBERT started
+highest and lost the least, which suggests pretraining helps with vocabulary shift, though a
+single seed per cross-domain setting limits how firmly that can be stated.
 
-The direction of transfer matters more than the size of the training set. A model trained on long, nuanced film reviews handled short product and service reviews well. A model trained on short verdicts struggled with film reviews. Mixed-domain training at a fixed budget gave small and uneven changes, concentrated on Amazon, the most heterogeneous domain, and those changes sit close to the seed-to-seed spread.
+Which domain is the target matters more than which one the model was trained on, and the
+asymmetry is systematic: long review training data transfers to short reviews almost for free,
+while the reverse direction is expensive. More in-domain data does not fix this at the scale we
+tested. Mixed-domain training at a fixed budget produced changes close to seed noise.
 
-The practical recommendation for a business is to test a reused model on a sample of the new domain before trusting it, and to expect the largest errors where reviews mix praise and criticism or rely on negation.
+For a business reusing a model in a new review category, the practical step is to check a sample
+of the new domain first and to expect the largest errors where reviews mix praise and criticism
+or hinge on negation.
 
 ## 8. Reproducibility
 
 | Step | Command |
 |---|---|
 | Environment | `bash scripts/setup_env.sh` |
+| Tests | `python -m pytest tests -q` |
 | Everything | `bash scripts/run_all.sh` |
 | Data only | `python src/prepare_data.py` |
 
-Seed 42 is fixed for sampling, splitting and training. Hyperparameters live in `configs/final.yaml`. Every training run writes a JSON record with its settings and metrics. All runs used a single RTX 3090 with CUDA 12.2; one DistilBERT fine-tune takes four to six minutes at this size.
+Seed 42 is fixed for sampling, splitting and training. Hyperparameters live in
+`configs/final.yaml`. Every training run writes a JSON record with its settings and metrics.
+All runs used one RTX 3090 with CUDA 12.2; a DistilBERT fine-tune took between 64 and 452
+seconds depending on the training set size.
 
-The data step is deterministic. Running `src/prepare_data.py` a second time regenerated all nine parquet files with identical md5 checksums, so a teammate who clones the repository and reruns the script gets the same splits. Re-running `src/baselines.py` reproduced the within-domain table to six decimals.
+The data step is deterministic. Running `src/prepare_data.py` a second time regenerated all
+nine parquet files with identical md5 checksums. Re-running `src/baselines.py` reproduced the
+within-domain table to six decimals.
 
 ## References
 
