@@ -65,19 +65,16 @@ and Amazon Polarity contains a few non-English reviews. We left both in place.
 | TF-IDF + Linear SVM | same features, C tuned per domain on validation |
 | DistilBERT | distilbert-base-uncased, max length 256, batch 32, 3 epochs, learning rate 2e-5, best epoch chosen on validation |
 
-The TF-IDF vectoriser is fitted on training text only. The learning rate for DistilBERT was
-chosen from two runs on IMDb validation (2e-5 scored 0.9090 and 3e-5 scored 0.9090 to four
-decimals; the script kept 2e-5) and applied to every domain. Test splits played no part in
-training or in hyperparameter selection.
+The vectoriser sees training text and nothing else. We picked the DistilBERT learning rate on
+IMDb validation, where 2e-5 and 3e-5 both landed on 0.9090 after four decimals; the script kept
+2e-5 and every domain uses that value. Neither the test split nor the target domain had a say
+in any of it.
 
-Three settings:
-
-1. Within-domain: train and test on the same domain.
-2. Cross-domain: train on one domain, test on each of the other two. The within-domain
-   checkpoint is reused, so no retraining happens per direction.
-3. Mixed-domain: train on two domains, test on the third. The training set stays at 20,000
-   rows (10,000 per source domain), so the comparison isolates domain diversity rather than
-   data volume.
+We ran three settings. The first keeps training and testing inside one domain. The second trains
+on one domain and evaluates on the other two, reusing the checkpoint rather than retraining for
+each direction. The third combines two domains for training and holds the third out, with the
+training set fixed at 20,000 rows (10,000 from each source) so that what changes between runs is
+domain diversity and not the amount of data.
 
 ## 4. Results
 
@@ -197,10 +194,10 @@ from long, mixed-tone text, which extra vocabulary does not fix.
 | Yelp | 42, 43, 44 | 3 | 0.9429 | 0.0065 | 0.9358 | 0.9486 |
 | Amazon | 42, 43, 44 | 3 | 0.9278 | 0.0021 | 0.9254 | 0.9294 |
 
-Three runs of the same configuration move the test score by up to 0.013 macro-F1. That is the
-scale to keep in mind when reading the rest of the tables: the cross-domain losses of 0.02 to
-0.10 are several times larger and stand, the IMDb gap between DistilBERT and TF-IDF SVM (0.002)
-does not, and the mixed-domain changes (0.005 to 0.022) sit at the edge of the noise.
+Three runs of the same configuration land up to 0.013 macro-F1 apart. That number is the
+yardstick for everything else here. Losses of 0.02 to 0.10 survive it. The 0.002 IMDb gap
+between DistilBERT and TF-IDF SVM does not. And the mixed-domain shifts, 0.005 to 0.022, sit
+right on the boundary.
 
 ### 4.6 What the classifiers key on
 
@@ -213,16 +210,16 @@ does not, and the mixed-domain changes (0.005 to 0.022) sit at the edge of the n
 | negative | IMDb / Amazon | 12 | 0.429 | bad, boring, horrible, poor, waste, worst |
 | negative | Yelp / Amazon | 10 | 0.333 | bad, horrible, no, not, poor, worst |
 
-Positive vocabulary transfers. Eleven or twelve of the twenty strongest positive terms are
-shared by every pair of domains, and they are ordinary sentiment adjectives. Negative vocabulary
-overlaps a little less, and the strongest negative features differ in kind: IMDb's are sentiment
-words such as awful and boring, while Yelp's and Amazon's lists include negation markers (no,
-not, don). A model that reads negation as the main negative signal will misfire on a domain
-that expresses negativity through adjectives instead.
+Positive words carry across. Every pair of domains shares eleven or twelve of its twenty
+strongest positive terms, and those terms are plain sentiment adjectives. Negative vocabulary
+overlaps a little less, and the top negative features differ in kind: IMDb's are sentiment words
+such as awful and boring, while Yelp's and Amazon's lists include negation markers (no, not,
+don). A model that reads negation as the main negative signal will misfire on a domain that
+expresses negativity through adjectives instead.
 
-These coefficient lists come from one shared regularisation strength (C=1.0) rather than the
-per-domain values used in the main experiments. Comparing coefficient rankings across domains
-requires the same model configuration in each, so the shared value is deliberate.
+One caveat: these lists use a single regularisation strength (C=1.0), not the per-domain values
+from the main runs. Rankings can only be compared if each domain's model is configured
+identically, so the shared value is deliberate.
 
 ### 4.7 Does more training data help?
 
@@ -234,10 +231,10 @@ requires the same model configuration in each, so the shared value is deliberate
 
 ![Data scaling](figures/fig_data_scaling.png)
 
-Quadrupling the IMDb training set raises within-domain macro-F1 by 0.009 and leaves the two
-cross-domain scores flat (Yelp) or slightly lower (Amazon, -0.013, which is within seed
-variation). Extra in-domain data therefore does not close the gap at this scale, which points
-to vocabulary and length mismatch rather than data scarcity.
+Four times the IMDb data buys 0.009 macro-F1 inside the domain. The two cross-domain scores stay
+flat (Yelp) or slip a little (Amazon, -0.013, inside seed variation). At this scale extra
+in-domain data does not close the gap, which points at vocabulary and length mismatch rather
+than data scarcity.
 
 ## 5. Error analysis
 
@@ -363,8 +360,8 @@ Seed 42 is fixed for sampling, splitting and training. Hyperparameters live in
 All runs used one RTX 3090 with CUDA 12.2; a DistilBERT fine-tune took between 64 and 452
 seconds depending on the training set size.
 
-The data step is deterministic. Running `src/prepare_data.py` a second time regenerated all
-nine parquet files with identical md5 checksums. Re-running `src/baselines.py` reproduced the
+The data step is deterministic: a second run of `src/prepare_data.py` produced all nine parquet
+files with identical md5 checksums, and re-running `src/baselines.py` reproduced the
 within-domain table to six decimals.
 
 ## References
